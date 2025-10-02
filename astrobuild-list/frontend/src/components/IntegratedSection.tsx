@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap } from 'lucide-react'
+import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap, Flag } from 'lucide-react'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
 import CarModal from './cars/CarModal'
@@ -25,6 +25,7 @@ interface Task {
   description?: string
   assigned_mechanic?: string
   points: number
+  is_priority?: number
   status: 'pending' | 'in_progress' | 'completed'
   created_at: string
   updated_at: string
@@ -69,6 +70,8 @@ export default function IntegratedSection() {
   const [newTaskTitle, setNewTaskTitle] = useState<{ [carId: number]: string }>({})
   const [completingTaskMechanic, setCompletingTaskMechanic] = useState<{ [taskId: number]: string }>({})
   const [newTaskPoints, setNewTaskPoints] = useState<{ [carId: number]: number }>({})
+  const [newTaskMechanic, setNewTaskMechanic] = useState<{ [carId: number]: string }>({})
+  const [newTaskPriority, setNewTaskPriority] = useState<{ [carId: number]: boolean }>({})
   const [showNewTaskInput, setShowNewTaskInput] = useState<{ [carId: number]: boolean }>({})
 
   useEffect(() => {
@@ -133,8 +136,9 @@ export default function IntegratedSection() {
           car_id: carId,
           title,
           description: '',
-          assigned_mechanic: null,
-          points: newTaskPoints[carId] || 1
+          assigned_mechanic: newTaskMechanic[carId] || null,
+          points: newTaskPoints[carId] || 1,
+          is_priority: newTaskPriority[carId] ? 1 : 0
         })
       })
 
@@ -142,6 +146,8 @@ export default function IntegratedSection() {
         // Clear inputs
         setNewTaskTitle(prev => ({ ...prev, [carId]: '' }))
         setNewTaskPoints(prev => ({ ...prev, [carId]: 1 }))
+        setNewTaskMechanic(prev => ({ ...prev, [carId]: '' }))
+        setNewTaskPriority(prev => ({ ...prev, [carId]: false }))
         setShowNewTaskInput(prev => ({ ...prev, [carId]: false }))
 
         // Reload data
@@ -396,20 +402,55 @@ export default function IntegratedSection() {
                           onKeyPress={(e) => e.key === 'Enter' && handleAddTask(car.id)}
                         />
 
-                        {/* Points selection */}
-                        <div className="w-32">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Puntos de la tarea</label>
-                          <select
-                            value={newTaskPoints[car.id] || 1}
-                            onChange={(e) => setNewTaskPoints(prev => ({ ...prev, [car.id]: parseInt(e.target.value) }))}
-                            className="w-full px-3 py-2 bg-white border-0 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 shadow-sm"
-                          >
-                            <option value={1}>1 ⭐</option>
-                            <option value={2}>2 ⭐</option>
-                            <option value={3}>3 ⭐</option>
-                            <option value={5}>5 ⭐</option>
-                            <option value={10}>10 ⭐</option>
-                          </select>
+                        {/* Two column layout for selects */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Mechanic selection */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Mecánico Asignado</label>
+                            <select
+                              value={newTaskMechanic[car.id] || ''}
+                              onChange={(e) => setNewTaskMechanic(prev => ({ ...prev, [car.id]: e.target.value }))}
+                              className="w-full px-3 py-2 bg-white border-0 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 shadow-sm"
+                            >
+                              <option value="">Sin asignar</option>
+                              {mechanics.map(mechanic => (
+                                <option key={mechanic} value={mechanic}>
+                                  {mechanicAvatars[mechanic]} {mechanic}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Points selection */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Dificultad (Puntos)</label>
+                            <select
+                              value={newTaskPoints[car.id] || 1}
+                              onChange={(e) => setNewTaskPoints(prev => ({ ...prev, [car.id]: parseInt(e.target.value) }))}
+                              className="w-full px-3 py-2 bg-white border-0 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 shadow-sm"
+                            >
+                              <option value={1}>⭐ Fácil (1 pto)</option>
+                              <option value={2}>⭐⭐ Media (2 ptos)</option>
+                              <option value={3}>⭐⭐⭐ Difícil (3 ptos)</option>
+                              <option value={4}>⭐⭐⭐⭐ Muy Difícil (4 ptos)</option>
+                              <option value={5}>⭐⭐⭐⭐⭐ Extrema (5 ptos)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Priority checkbox */}
+                        <div className="flex items-center space-x-2 p-3 bg-white rounded-xl border border-gray-200">
+                          <input
+                            type="checkbox"
+                            id={`priority-${car.id}`}
+                            checked={newTaskPriority[car.id] || false}
+                            onChange={(e) => setNewTaskPriority(prev => ({ ...prev, [car.id]: e.target.checked }))}
+                            className="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor={`priority-${car.id}`} className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                            <Flag className={`w-4 h-4 mr-2 ${newTaskPriority[car.id] ? 'text-red-600 fill-red-600' : 'text-gray-400'}`} />
+                            Marcar como prioritaria (Bandera roja)
+                          </label>
                         </div>
 
                         {/* Action buttons */}
@@ -438,6 +479,8 @@ export default function IntegratedSection() {
                         <div key={task.id} className={`group p-4 rounded-2xl border transition-all duration-200 hover:shadow-md ${
                           task.status === 'completed'
                             ? 'bg-green-50 border-green-200'
+                            : task.is_priority
+                            ? 'bg-white border-l-4 border-l-red-500 border-gray-200 hover:border-gray-300'
                             : 'bg-white border-gray-200 hover:border-gray-300'
                         }`}>
                           <div className="flex items-center justify-between">
@@ -454,6 +497,9 @@ export default function IntegratedSection() {
                               </button>
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
+                                  {task.is_priority === 1 && (
+                                    <Flag className="w-4 h-4 text-red-600 fill-red-600 flex-shrink-0" />
+                                  )}
                                   <p className={`font-medium ${
                                     task.status === 'completed' ? 'line-through text-green-600' : 'text-gray-900'
                                   }`}>
