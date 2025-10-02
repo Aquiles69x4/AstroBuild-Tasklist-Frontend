@@ -320,14 +320,20 @@ export default function IntegratedSection() {
             const gradient = gradients[index % gradients.length]
 
             return (
-              <div key={car.id} className="relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300">
+              <div
+                key={car.id}
+                className="car-card relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300"
+                style={{
+                  animation: `slideInUp 0.5s ease-out ${index * 0.1}s both`
+                }}
+              >
                 {/* Gradient Header */}
                 <div className={`bg-gradient-to-r ${gradient} p-6 text-white relative`}>
                   <div className="absolute inset-0 bg-black/10"></div>
                   <div className="relative z-10">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300">
                           <Car className="w-6 h-6 text-white" />
                         </div>
                         <div className="flex-1">
@@ -347,8 +353,8 @@ export default function IntegratedSection() {
                               </span>
                             </div>
                             {totalTasks > 0 && (
-                              <div className="flex items-center space-x-2 text-sm">
-                                <Zap className="w-4 h-4" />
+                              <div className="flex items-center space-x-2 text-sm animate-pulse">
+                                <Zap className="w-4 h-4 animate-bounce" />
                                 <span className="font-semibold">{completedTasks}/{totalTasks}</span>
                               </div>
                             )}
@@ -358,14 +364,14 @@ export default function IntegratedSection() {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => setEditingCar(car)}
-                          className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 transition-colors"
+                          className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
                           title="Editar vehículo"
                         >
                           <Edit3 className="w-4 h-4 text-white" />
                         </button>
                         <button
                           onClick={() => handleDeleteCar(car.id)}
-                          className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-red-500/30 transition-colors"
+                          className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-red-500/30 hover:scale-110 transition-all duration-200"
                           title="Eliminar vehículo"
                         >
                           <Trash2 className="w-4 h-4 text-white" />
@@ -381,7 +387,7 @@ export default function IntegratedSection() {
                     <h4 className="font-bold text-gray-900 text-lg">📝 Tareas</h4>
                     <button
                       onClick={() => setShowNewTaskInput(prev => ({ ...prev, [car.id]: !prev[car.id] }))}
-                      className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center space-x-1"
+                      className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 flex items-center space-x-1 shadow-md hover:shadow-lg"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Nueva</span>
@@ -475,21 +481,27 @@ export default function IntegratedSection() {
                   {/* Tasks list */}
                   <div className="space-y-3">
                     {carTasks.length > 0 ? (
-                      carTasks.map((task) => (
-                        <div key={task.id} className={`group p-4 rounded-2xl border transition-all duration-200 hover:shadow-md ${
-                          task.status === 'completed'
-                            ? 'bg-green-50 border-green-200'
-                            : task.is_priority
-                            ? 'bg-white border-l-4 border-l-red-500 border-gray-200 hover:border-gray-300'
-                            : 'bg-white border-gray-200 hover:border-gray-300'
-                        }`}>
+                      carTasks.map((task, taskIndex) => (
+                        <div
+                          key={task.id}
+                          className={`task-item group p-4 rounded-2xl border transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
+                            task.status === 'completed'
+                              ? 'bg-green-50 border-green-200'
+                              : task.is_priority
+                              ? 'bg-white border-l-4 border-l-red-500 border-gray-200 hover:border-gray-300'
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                          style={{
+                            animation: `fadeInSlide 0.3s ease-out ${taskIndex * 0.05}s both`
+                          }}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4 flex-1">
                               <button
                                 onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
                                   task.status === 'completed'
-                                    ? 'bg-green-500 border-green-500 text-white shadow-lg'
+                                    ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                     : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                                 }`}
                               >
@@ -498,7 +510,7 @@ export default function IntegratedSection() {
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
                                   {task.is_priority === 1 && (
-                                    <Flag className="w-4 h-4 text-red-600 fill-red-600 flex-shrink-0" />
+                                    <Flag className="w-4 h-4 text-red-600 fill-red-600 flex-shrink-0 animate-bounce" />
                                   )}
                                   <p className={`font-medium ${
                                     task.status === 'completed' ? 'line-through text-green-600' : 'text-gray-900'
@@ -626,6 +638,39 @@ export default function IntegratedSection() {
           />
         )}
       </div>
+
+      {/* Add CSS animations */}
+      <style jsx>{`
+        @keyframes slideInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes fadeInSlide {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .car-card:hover {
+          transform: translateY(-4px);
+        }
+
+        .task-item:hover {
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
     </div>
   )
 }
