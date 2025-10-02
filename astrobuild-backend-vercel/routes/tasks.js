@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
       query += ' WHERE ' + conditions.join(' AND ');
     }
 
-    query += ' ORDER BY t.created_at DESC';
+    query += ' ORDER BY t.is_priority DESC, t.created_at DESC';
 
     const result = await db.query(query, params);
     res.json(result.rows);
@@ -75,7 +75,7 @@ router.post('/',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { car_id, title, description, assigned_mechanic, points = 1 } = req.body;
+      const { car_id, title, description, assigned_mechanic, points = 1, is_priority = 0 } = req.body;
 
       // Check if car exists
       const carExists = await db.query('SELECT id FROM cars WHERE id = $1', [car_id]);
@@ -84,8 +84,8 @@ router.post('/',
       }
 
       const result = await db.query(
-        'INSERT INTO tasks (car_id, title, description, assigned_mechanic, points) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [car_id, title, description || null, assigned_mechanic || null, points]
+        'INSERT INTO tasks (car_id, title, description, assigned_mechanic, points, is_priority) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [car_id, title, description || null, assigned_mechanic || null, points, is_priority ? 1 : 0]
       );
 
       // Get the created task with car details

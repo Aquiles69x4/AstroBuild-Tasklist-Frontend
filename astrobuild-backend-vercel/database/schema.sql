@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     description TEXT,
     assigned_mechanic TEXT REFERENCES mechanics(name),
     points INTEGER DEFAULT 1,
+    is_priority INTEGER DEFAULT 0 CHECK (is_priority IN (0, 1)),
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

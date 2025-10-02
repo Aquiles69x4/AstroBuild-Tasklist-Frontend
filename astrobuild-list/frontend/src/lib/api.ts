@@ -90,6 +90,10 @@ class ApiClient {
   }
 
   // Mechanics API
+  async getMechanics() {
+    return this.request('/mechanics')
+  }
+
   async getLeaderboard() {
     return this.request('/mechanics/leaderboard')
   }

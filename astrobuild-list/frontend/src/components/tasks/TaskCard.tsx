@@ -1,6 +1,6 @@
 'use client'
 
-import { Edit, Trash2, Car, Calendar, CheckCircle } from 'lucide-react'
+import { Edit, Trash2, Car, Calendar, CheckCircle, Flag, User, Star } from 'lucide-react'
 
 interface TaskCardProps {
   task: any
@@ -38,13 +38,24 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }: TaskCar
 
   const canComplete = task.status !== 'completed'
 
+  const renderStars = (points: number) => {
+    return Array.from({ length: points }, (_, i) => (
+      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400 inline" />
+    ))
+  }
+
   return (
-    <div className="card p-6 hover:shadow-md transition-shadow">
+    <div className={`card p-6 hover:shadow-md transition-shadow ${task.is_priority ? 'border-l-4 border-l-red-500' : ''}`}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
-            {task.title}
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            {task.is_priority && (
+              <Flag className="w-4 h-4 text-red-600 fill-red-600" />
+            )}
+            <h3 className="text-lg font-semibold text-gray-900">
+              {task.title}
+            </h3>
+          </div>
           {task.description && (
             <p className="text-sm text-gray-600 mb-2">{task.description}</p>
           )}
@@ -66,6 +77,21 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }: TaskCar
                 {task.license_plate}
               </span>
             )}
+          </div>
+        )}
+
+        {task.assigned_mechanic && (
+          <div className="flex items-center text-sm text-gray-600">
+            <User className="w-4 h-4 mr-2 text-gray-400" />
+            <span>Mecánico: <span className="font-medium text-gray-900">{task.assigned_mechanic}</span></span>
+          </div>
+        )}
+
+        {task.points && (
+          <div className="flex items-center text-sm text-gray-600">
+            <span className="mr-2">Dificultad:</span>
+            {renderStars(task.points)}
+            <span className="ml-1 text-xs">({task.points} {task.points === 1 ? 'punto' : 'puntos'})</span>
           </div>
         )}
 
