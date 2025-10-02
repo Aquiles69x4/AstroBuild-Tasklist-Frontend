@@ -105,13 +105,17 @@ export default function Leaderboard() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center mr-4 shadow-xl hover:scale-110 transition-transform duration-300">
+          <div className="flex flex-col items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center mb-4 shadow-xl hover:scale-110 transition-transform duration-300">
               <Trophy className="w-8 h-8 text-white" />
             </div>
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900">🏆 Leaderboard de Mecánicos</h2>
-              <p className="text-gray-600 text-lg">Ranking por puntos ganados</p>
+            <div className="relative">
+              <h1 className="leaderboard-title text-6xl md:text-8xl font-extrabold tracking-wider mb-4">
+                LEADERBOARD
+              </h1>
+              <p className="text-gray-700 text-lg font-semibold mt-2">
+                🏆 Ranking de Mecánicos 🏆
+              </p>
             </div>
           </div>
         </div>
@@ -203,46 +207,46 @@ export default function Leaderboard() {
         {leaderboard.length >= 3 && (
           <div className="mb-8 animate-fade-in-up">
             <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">🥇 Top 3 Champions</h3>
-            <div className="flex justify-center items-end space-x-4">
+            <div className="flex justify-center items-end space-x-2 md:space-x-4">
               {/* 2nd Place */}
               <div className="text-center hover:scale-105 transition-transform duration-300" style={{animation: 'bounceIn 0.6s ease-out 0.2s both'}}>
-                <div className="w-24 h-24 bg-gradient-to-r from-gray-300 to-gray-500 rounded-3xl flex items-center justify-center mb-3 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-                  <span className="text-3xl">{mechanicAvatars[leaderboard[1]?.name] || '👤'}</span>
+                <div className="w-16 h-16 md:w-24 md:h-24 bg-gradient-to-r from-gray-300 to-gray-500 rounded-2xl md:rounded-3xl flex items-center justify-center mb-2 md:mb-3 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <span className="text-xl md:text-3xl">{mechanicAvatars[leaderboard[1]?.name] || '👤'}</span>
                 </div>
-                <div className="bg-white rounded-2xl p-4 shadow-lg border-2 border-gray-300 min-w-[140px] hover:shadow-xl transition-all duration-300">
-                  <div className="text-2xl mb-1">🥈</div>
-                  <h4 className="font-bold text-gray-900 text-sm">{leaderboard[1]?.name}</h4>
-                  <p className="text-lg font-bold text-gray-600">{leaderboard[1]?.total_points} pts</p>
-                  <p className="text-xs text-gray-500">{leaderboard[1]?.total_tasks} tareas</p>
+                <div className="bg-white rounded-xl md:rounded-2xl p-2 md:p-4 shadow-lg border-2 border-gray-300 min-w-[90px] md:min-w-[140px] hover:shadow-xl transition-all duration-300">
+                  <div className="text-xl md:text-2xl mb-1">🥈</div>
+                  <h4 className="font-bold text-gray-900 text-xs md:text-sm truncate">{leaderboard[1]?.name}</h4>
+                  <p className="text-sm md:text-lg font-bold text-gray-600">{leaderboard[1]?.total_points} pts</p>
+                  <p className="text-xs text-gray-500 hidden md:block">{leaderboard[1]?.total_tasks} tareas</p>
                 </div>
               </div>
 
               {/* 1st Place */}
               <div className="text-center hover:scale-105 transition-transform duration-300" style={{animation: 'bounceIn 0.6s ease-out both'}}>
-                <div className="w-28 h-28 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center mb-3 shadow-xl relative hover:shadow-2xl transition-shadow duration-300">
-                  <span className="text-4xl">{mechanicAvatars[leaderboard[0]?.name] || '👤'}</span>
-                  <div className="absolute -top-2 -right-2 animate-bounce">
-                    <Crown className="w-6 h-6 text-yellow-300" />
+                <div className="w-20 h-20 md:w-28 md:h-28 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl md:rounded-3xl flex items-center justify-center mb-2 md:mb-3 shadow-xl relative hover:shadow-2xl transition-shadow duration-300">
+                  <span className="text-2xl md:text-4xl">{mechanicAvatars[leaderboard[0]?.name] || '👤'}</span>
+                  <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 animate-bounce">
+                    <Crown className="w-4 h-4 md:w-6 md:h-6 text-yellow-300" />
                   </div>
                 </div>
-                <div className="bg-white rounded-2xl p-4 shadow-xl border-2 border-yellow-400 min-w-[160px] hover:shadow-2xl transition-all duration-300">
-                  <div className="text-3xl mb-1 animate-pulse">🥇</div>
-                  <h4 className="font-bold text-gray-900">{leaderboard[0]?.name}</h4>
-                  <p className="text-xl font-bold text-yellow-600">{leaderboard[0]?.total_points} pts</p>
-                  <p className="text-sm text-gray-500">{leaderboard[0]?.total_tasks} tareas</p>
+                <div className="bg-white rounded-xl md:rounded-2xl p-2 md:p-4 shadow-xl border-2 border-yellow-400 min-w-[100px] md:min-w-[160px] hover:shadow-2xl transition-all duration-300">
+                  <div className="text-2xl md:text-3xl mb-1 animate-pulse">🥇</div>
+                  <h4 className="font-bold text-gray-900 text-xs md:text-base truncate">{leaderboard[0]?.name}</h4>
+                  <p className="text-base md:text-xl font-bold text-yellow-600">{leaderboard[0]?.total_points} pts</p>
+                  <p className="text-xs md:text-sm text-gray-500 hidden md:block">{leaderboard[0]?.total_tasks} tareas</p>
                 </div>
               </div>
 
               {/* 3rd Place */}
               <div className="text-center hover:scale-105 transition-transform duration-300" style={{animation: 'bounceIn 0.6s ease-out 0.4s both'}}>
-                <div className="w-24 h-24 bg-gradient-to-r from-amber-600 to-amber-800 rounded-3xl flex items-center justify-center mb-3 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-                  <span className="text-3xl">{mechanicAvatars[leaderboard[2]?.name] || '👤'}</span>
+                <div className="w-16 h-16 md:w-24 md:h-24 bg-gradient-to-r from-amber-600 to-amber-800 rounded-2xl md:rounded-3xl flex items-center justify-center mb-2 md:mb-3 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                  <span className="text-xl md:text-3xl">{mechanicAvatars[leaderboard[2]?.name] || '👤'}</span>
                 </div>
-                <div className="bg-white rounded-2xl p-4 shadow-lg border-2 border-amber-600 min-w-[140px] hover:shadow-xl transition-all duration-300">
-                  <div className="text-2xl mb-1">🥉</div>
-                  <h4 className="font-bold text-gray-900 text-sm">{leaderboard[2]?.name}</h4>
-                  <p className="text-lg font-bold text-amber-600">{leaderboard[2]?.total_points} pts</p>
-                  <p className="text-xs text-gray-500">{leaderboard[2]?.total_tasks} tareas</p>
+                <div className="bg-white rounded-xl md:rounded-2xl p-2 md:p-4 shadow-lg border-2 border-amber-600 min-w-[90px] md:min-w-[140px] hover:shadow-xl transition-all duration-300">
+                  <div className="text-xl md:text-2xl mb-1">🥉</div>
+                  <h4 className="font-bold text-gray-900 text-xs md:text-sm truncate">{leaderboard[2]?.name}</h4>
+                  <p className="text-sm md:text-lg font-bold text-amber-600">{leaderboard[2]?.total_points} pts</p>
+                  <p className="text-xs text-gray-500 hidden md:block">{leaderboard[2]?.total_tasks} tareas</p>
                 </div>
               </div>
             </div>
@@ -353,6 +357,70 @@ export default function Leaderboard() {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+
+        @keyframes chromeShine {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        @keyframes glow {
+          0%, 100% {
+            filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.6))
+                    drop-shadow(0 0 40px rgba(251, 191, 36, 0.4));
+          }
+          50% {
+            filter: drop-shadow(0 0 30px rgba(251, 191, 36, 0.8))
+                    drop-shadow(0 0 60px rgba(251, 191, 36, 0.6));
+          }
+        }
+
+        .leaderboard-title {
+          font-family: 'Impact', 'Arial Black', sans-serif;
+          background: linear-gradient(
+            110deg,
+            #c0c0c0 0%,
+            #ffffff 25%,
+            #e8e8e8 35%,
+            #d4d4d4 45%,
+            #ffffff 50%,
+            #d4d4d4 55%,
+            #e8e8e8 65%,
+            #ffffff 75%,
+            #c0c0c0 100%
+          );
+          background-size: 200% auto;
+          color: transparent;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          -webkit-text-stroke: 2px #4a5568;
+          text-stroke: 2px #4a5568;
+          animation:
+            chromeShine 3s linear infinite,
+            float 3s ease-in-out infinite,
+            glow 2s ease-in-out infinite;
+          position: relative;
+        }
+
+        .leaderboard-title:hover {
+          animation:
+            chromeShine 1.5s linear infinite,
+            float 3s ease-in-out infinite,
+            glow 2s ease-in-out infinite;
         }
 
         .animate-fade-in {
