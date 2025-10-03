@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap, Flag } from 'lucide-react'
+import confetti from 'canvas-confetti'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
+import { playConfettiSound } from '@/lib/sounds'
 import CarModal from './cars/CarModal'
 
 interface Car {
@@ -186,6 +188,47 @@ export default function IntegratedSection() {
     }
 
     try {
+      // Disparar confetti visual con múltiples explosiones
+      const count = 200
+      const defaults = {
+        origin: { y: 0.7 }
+      }
+
+      function fire(particleRatio: number, opts: any) {
+        confetti({
+          ...defaults,
+          ...opts,
+          particleCount: Math.floor(count * particleRatio),
+          colors: ['#10B981', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6']
+        })
+      }
+
+      fire(0.25, {
+        spread: 26,
+        startVelocity: 55,
+      })
+      fire(0.2, {
+        spread: 60,
+      })
+      fire(0.35, {
+        spread: 100,
+        decay: 0.91,
+        scalar: 0.8
+      })
+      fire(0.1, {
+        spread: 120,
+        startVelocity: 25,
+        decay: 0.92,
+        scalar: 1.2
+      })
+      fire(0.1, {
+        spread: 120,
+        startVelocity: 45,
+      })
+
+      // Reproducir sonido
+      playConfettiSound()
+
       await api.updateTask(taskId, {
         status: 'completed',
         assigned_mechanic: mechanic
