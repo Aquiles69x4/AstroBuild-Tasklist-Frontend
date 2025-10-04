@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Clock, LogIn, LogOut, Car, Play, Square, Calendar, DollarSign, Wrench } from 'lucide-react'
+import { Clock, LogIn, LogOut, Car, Play, Square, Calendar, DollarSign, Wrench, Edit2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
 
@@ -93,6 +93,16 @@ export default function PunchesTab() {
   const [mechanicsSummary, setMechanicsSummary] = useState<MechanicSummary[]>([])
   const [expandedMechanics, setExpandedMechanics] = useState<Set<string>>(new Set())
   const [topMechanic, setTopMechanic] = useState<string | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingPunch, setEditingPunch] = useState<Punch | null>(null)
+  const [editPassword, setEditPassword] = useState('')
+  const [editPunchIn, setEditPunchIn] = useState('')
+  const [editPunchOut, setEditPunchOut] = useState('')
+  const [editError, setEditError] = useState('')
+  const [punchesLimit] = useState(20)
+  const [punchesOffset, setPunchesOffset] = useState(0)
+  const [totalPunches, setTotalPunches] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     // Try to load clock offset from localStorage
@@ -143,14 +153,24 @@ export default function PunchesTab() {
       const today = new Date().toISOString().split('T')[0]
 
       const [punchesData, sessionsData, carsData, summaryData, leaderboardData] = await Promise.all([
-        api.getPunches({ date: today }),
+        api.getPunches({ date: today, limit: punchesLimit, offset: 0 }),
         api.getCarWorkSessions({ date: today }),
         api.getCars(),
         api.getMechanicCarsSummary(),
         api.getLeaderboard()
       ])
 
-      setTodayPunches(punchesData)
+      // Handle pagination response
+      if (punchesData && punchesData.punches) {
+        setTodayPunches(punchesData.punches || [])
+        setTotalPunches(punchesData.total || 0)
+        setPunchesOffset(punchesLimit)
+      } else {
+        // Fallback for old API format (just in case)
+        setTodayPunches([])
+        setTotalPunches(0)
+      }
+
       setTodayCarSessions(sessionsData)
       setCars(carsData)
       setMechanicsSummary(summaryData)
@@ -161,10 +181,34 @@ export default function PunchesTab() {
       }
     } catch (error) {
       console.error('Error loading punches data:', error)
+      setTodayPunches([])
+      setTotalPunches(0)
     } finally {
       if (showLoading) {
         setLoading(false)
       }
+    }
+  }
+
+  const loadMorePunches = async () => {
+    try {
+      setLoadingMore(true)
+      const today = new Date().toISOString().split('T')[0]
+
+      const punchesData = await api.getPunches({
+        date: today,
+        limit: punchesLimit,
+        offset: punchesOffset
+      })
+
+      if (punchesData && punchesData.punches) {
+        setTodayPunches(prev => [...prev, ...(punchesData.punches || [])])
+        setPunchesOffset(prev => prev + punchesLimit)
+      }
+    } catch (error) {
+      console.error('Error loading more punches:', error)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -490,6 +534,83 @@ export default function PunchesTab() {
     }
   }
 
+  const handleEditPunch = (punch: Punch) => {
+    setEditingPunch(punch)
+    // Convert to datetime-local format
+    const punchInDate = new Date(punch.punch_in)
+    setEditPunchIn(formatDateTimeLocal(punchInDate))
+
+    if (punch.punch_out) {
+      const punchOutDate = new Date(punch.punch_out)
+      setEditPunchOut(formatDateTimeLocal(punchOutDate))
+    } else {
+      setEditPunchOut('')
+    }
+
+    setEditPassword('')
+    setEditError('')
+    setShowEditModal(true)
+  }
+
+  const formatDateTimeLocal = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  const handleSubmitEdit = async () => {
+    if (!editingPunch) return
+
+    setEditError('')
+
+    if (!editPassword) {
+      setEditError('La contraseña es requerida')
+      return
+    }
+
+    if (!editPunchIn) {
+      setEditError('La hora de entrada es requerida')
+      return
+    }
+
+    if (editPunchOut && new Date(editPunchOut) <= new Date(editPunchIn)) {
+      setEditError('La hora de salida debe ser después de la hora de entrada')
+      return
+    }
+
+    try {
+      await api.updatePunchTimes(editingPunch.id, {
+        punch_in: new Date(editPunchIn).toISOString(),
+        punch_out: editPunchOut ? new Date(editPunchOut).toISOString() : undefined,
+        password: editPassword
+      })
+
+      // Reload data
+      await loadData(false)
+
+      // Close modal
+      setShowEditModal(false)
+      setEditingPunch(null)
+      setEditPassword('')
+      setEditPunchIn('')
+      setEditPunchOut('')
+    } catch (error: any) {
+      setEditError(error.message || 'Error al actualizar el ponche')
+    }
+  }
+
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setEditingPunch(null)
+    setEditPassword('')
+    setEditPunchIn('')
+    setEditPunchOut('')
+    setEditError('')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -759,6 +880,93 @@ export default function PunchesTab() {
               })}
             </div>
           </div>
+
+          {/* Punches History */}
+          <div className="bg-white rounded-xl shadow-md p-6 mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Clock className="w-5 h-5 text-purple-600" />
+                Historial de Ponches
+              </h3>
+              {totalPunches > 0 && (
+                <span className="text-sm text-gray-600">
+                  Mostrando {todayPunches.length} de {totalPunches}
+                </span>
+              )}
+            </div>
+            <div className="space-y-2">
+              {todayPunches.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No hay ponches registrados hoy</p>
+              ) : (
+                <>
+                  {todayPunches.map((punch) => (
+                    <div
+                      key={punch.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{mechanicAvatars[punch.mechanic_name]}</span>
+                          <div>
+                            <p className="font-semibold text-gray-800">{punch.mechanic_name}</p>
+                            <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                              <span>Entrada: {formatTime(punch.punch_in)}</span>
+                              {punch.punch_out && (
+                                <span>Salida: {formatTime(punch.punch_out)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {punch.total_hours && (
+                            <span className="font-bold text-purple-600 text-lg">
+                              {formatHours(punch.total_hours)}
+                            </span>
+                          )}
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            punch.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {punch.status === 'active' ? 'Activo' : 'Completado'}
+                          </span>
+                          <button
+                            onClick={() => handleEditPunch(punch)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all"
+                            title="Editar ponche"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Load More Button */}
+                  {todayPunches.length < totalPunches && (
+                    <div className="flex justify-center pt-4">
+                      <button
+                        onClick={loadMorePunches}
+                        disabled={loadingMore}
+                        className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {loadingMore ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Cargando...
+                          </>
+                        ) : (
+                          <>
+                            Ver más ({totalPunches - todayPunches.length} restantes)
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </>
       )}
 
@@ -890,6 +1098,84 @@ export default function PunchesTab() {
                   className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirmar Ponche de Salida
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Punch Modal */}
+      {showEditModal && editingPunch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white rounded-t-2xl">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <Edit2 className="w-6 h-6" />
+                Editar Ponche
+              </h3>
+              <p className="text-blue-100 mt-1">
+                {editingPunch.mechanic_name} - {new Date(editingPunch.punch_in).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {editError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+                  ⚠️ {editError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña de Administrador:
+                </label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ingresa la contraseña"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hora de Entrada:
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editPunchIn}
+                  onChange={(e) => setEditPunchIn(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hora de Salida:
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editPunchOut}
+                  onChange={(e) => setEditPunchOut(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Deja vacío si el ponche está activo</p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={closeEditModal}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmitEdit}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
+                >
+                  Guardar Cambios
                 </button>
               </div>
             </div>

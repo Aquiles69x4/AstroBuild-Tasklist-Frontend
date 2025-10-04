@@ -103,11 +103,13 @@ class ApiClient {
   }
 
   // Punches API
-  async getPunches(filters?: { date?: string; mechanic_name?: string; status?: string }) {
+  async getPunches(filters?: { date?: string; mechanic_name?: string; status?: string; limit?: number; offset?: number }) {
     const params = new URLSearchParams()
     if (filters?.date) params.append('date', filters.date)
     if (filters?.mechanic_name) params.append('mechanic_name', filters.mechanic_name)
     if (filters?.status) params.append('status', filters.status)
+    if (filters?.limit) params.append('limit', filters.limit.toString())
+    if (filters?.offset) params.append('offset', filters.offset.toString())
 
     const query = params.toString() ? `?${params.toString()}` : ''
     return this.request(`/punches${query}`)
@@ -174,6 +176,13 @@ class ApiClient {
 
     const query = params.toString() ? `?${params.toString()}` : ''
     return this.request(`/punches/summary/car-costs${query}`)
+  }
+
+  async updatePunchTimes(punchId: number, data: { punch_in: string; punch_out?: string; password: string }) {
+    return this.request(`/punches/${punchId}/edit`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
   }
 
   async deletePunch(punchId: number) {

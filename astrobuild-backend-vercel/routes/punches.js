@@ -6,7 +6,7 @@ const router = express.Router();
 // Get all punches (optionally filter by date or mechanic)
 router.get('/', async (req, res) => {
   try {
-    const { date, mechanic_name, status } = req.query;
+    const { date, mechanic_name, status, limit, offset } = req.query;
 
     let query = 'SELECT * FROM punches WHERE 1=1';
     const params = [];
@@ -28,8 +28,47 @@ router.get('/', async (req, res) => {
 
     query += ' ORDER BY punch_in DESC';
 
-    const result = await db.query(query, params);
-    res.json(result.rows);
+    // Add pagination if limit is provided
+    if (limit) {
+      params.push(parseInt(limit));
+      query += ` LIMIT $${params.length}`;
+    }
+
+    if (offset) {
+      params.push(parseInt(offset));
+      query += ` OFFSET $${params.length}`;
+    }
+
+    // Get total count for pagination
+    let countQuery = 'SELECT COUNT(*) as total FROM punches WHERE 1=1';
+    const countParams = [];
+
+    if (date) {
+      countParams.push(date);
+      countQuery += ` AND date = $${countParams.length}`;
+    }
+
+    if (mechanic_name) {
+      countParams.push(mechanic_name);
+      countQuery += ` AND mechanic_name = $${countParams.length}`;
+    }
+
+    if (status) {
+      countParams.push(status);
+      countQuery += ` AND status = $${countParams.length}`;
+    }
+
+    const [result, countResult] = await Promise.all([
+      db.query(query, params),
+      db.query(countQuery, countParams)
+    ]);
+
+    res.json({
+      punches: result.rows,
+      total: parseInt(countResult.rows[0].total),
+      limit: limit ? parseInt(limit) : null,
+      offset: offset ? parseInt(offset) : 0
+    });
   } catch (error) {
     console.error('Error fetching punches:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -483,6 +522,63 @@ router.post('/reset-hours', async (req, res) => {
     res.json({ message: 'All hours reset successfully' });
   } catch (error) {
     console.error('Error resetting all hours:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update punch times (admin function)
+router.put('/:id/edit', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { punch_in, punch_out, password } = req.body;
+
+    // Verify password
+    if (password !== 'hola123') {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // Validate that punch_in is provided
+    if (!punch_in) {
+      return res.status(400).json({ error: 'punch_in is required' });
+    }
+
+    // Validate that punch_out is after punch_in if provided
+    if (punch_out && new Date(punch_out) <= new Date(punch_in)) {
+      return res.status(400).json({ error: 'punch_out must be after punch_in' });
+    }
+
+    // Build update query
+    let query = 'UPDATE punches SET punch_in = $1';
+    const params = [punch_in];
+
+    if (punch_out) {
+      params.push(punch_out);
+      query += `, punch_out = $${params.length}`;
+      // Calculate total_hours
+      query += `, total_hours = EXTRACT(EPOCH FROM ($${params.length}::timestamp - $1::timestamp)) / 3600`;
+      query += `, status = 'completed'`;
+    } else {
+      // If no punch_out, set it to NULL and status to active
+      query += ', punch_out = NULL, total_hours = NULL, status = \'active\'';
+    }
+
+    params.push(id);
+    query += ` WHERE id = $${params.length} RETURNING *`;
+
+    const result = await db.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Punch not found' });
+    }
+
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('punch-updated', result.rows[0]);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating punch:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
