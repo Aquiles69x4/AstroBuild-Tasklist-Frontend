@@ -22,8 +22,8 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:h-16">
+            <div className="flex items-center justify-between h-16 sm:h-auto">
               <div className="flex items-center">
                 <h1 className="text-xl font-bold text-gray-900"
                     style={{
@@ -37,7 +37,9 @@ export default function Dashboard() {
                   Colaborativo
                 </span>
               </div>
+            </div>
 
+            <div className="pb-3 sm:pb-0 sm:flex sm:items-center">
               <div style={{ display: 'flex', gap: '6px', backgroundColor: '#f8fafc', padding: '4px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 {tabs.map((tab) => {
                   const Icon = tab.icon
@@ -83,9 +85,6 @@ export default function Dashboard() {
                   )
                 })}
               </div>
-            </div>
-
-            <div className="flex items-center">
             </div>
           </div>
         </div>

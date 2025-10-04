@@ -319,17 +319,16 @@ export default function IntegratedSection() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <div className="mb-4">
+          <div className="mb-4 overflow-visible -ml-32 sm:-ml-48">
             <img
               src="/images/logo-astrobuild.png"
               alt="ASTROBUILD Tareas"
               className="w-auto"
               style={{
-                height: '140px',
-                transform: 'scale(4) translateX(-50px)',
+                height: '80px',
+                transform: 'scale(6)',
                 transformOrigin: 'left center',
-                filter: 'drop-shadow(12px 12px 24px rgba(0,0,0,0.6))',
-                maxWidth: 'none'
+                filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))',
               }}
             />
           </div>
