@@ -92,6 +92,7 @@ export default function PunchesTab() {
   const [carDistributions, setCarDistributions] = useState<CarHourDistribution[]>([{ car_id: 0, hours: 0, minutes: 0 }])
   const [mechanicsSummary, setMechanicsSummary] = useState<MechanicSummary[]>([])
   const [expandedMechanics, setExpandedMechanics] = useState<Set<string>>(new Set())
+  const [topMechanic, setTopMechanic] = useState<string | null>(null)
 
   useEffect(() => {
     // Try to load clock offset from localStorage
@@ -141,17 +142,23 @@ export default function PunchesTab() {
       }
       const today = new Date().toISOString().split('T')[0]
 
-      const [punchesData, sessionsData, carsData, summaryData] = await Promise.all([
+      const [punchesData, sessionsData, carsData, summaryData, leaderboardData] = await Promise.all([
         api.getPunches({ date: today }),
         api.getCarWorkSessions({ date: today }),
         api.getCars(),
-        api.getMechanicCarsSummary()
+        api.getMechanicCarsSummary(),
+        api.getLeaderboard()
       ])
 
       setTodayPunches(punchesData)
       setTodayCarSessions(sessionsData)
       setCars(carsData)
       setMechanicsSummary(summaryData)
+
+      // Set top mechanic from leaderboard
+      if (leaderboardData && leaderboardData.length > 0) {
+        setTopMechanic(leaderboardData[0].name)
+      }
     } catch (error) {
       console.error('Error loading punches data:', error)
     } finally {
@@ -538,25 +545,41 @@ export default function PunchesTab() {
               Seleccionar Empleado
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {mechanics.map((mechanic) => (
-                <button
-                  key={mechanic}
-                  onClick={() => setSelectedMechanic(mechanic)}
-                  className={`p-5 rounded-2xl border-4 transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 ${
-                    selectedMechanic === mechanic
-                      ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg transform scale-105'
-                      : 'border-gray-400 bg-white hover:border-blue-500 hover:bg-blue-50 shadow-md'
-                  }`}
-                  style={{
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                >
-                  <div className="text-4xl mb-2 transition-transform duration-300 hover:scale-125">{mechanicAvatars[mechanic]}</div>
-                  <div className={`text-sm font-semibold ${
-                    selectedMechanic === mechanic ? 'text-blue-700' : 'text-gray-700'
-                  }`}>{mechanic}</div>
-                </button>
-              ))}
+              {mechanics.map((mechanic) => {
+                const isTopMechanic = mechanic === topMechanic
+                return (
+                  <button
+                    key={mechanic}
+                    onClick={() => setSelectedMechanic(mechanic)}
+                    className={`p-5 rounded-2xl border-4 transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 relative ${
+                      selectedMechanic === mechanic
+                        ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg transform scale-105'
+                        : isTopMechanic
+                        ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-yellow-100 shadow-md hover:border-yellow-600'
+                        : 'border-gray-400 bg-white hover:border-blue-500 hover:bg-blue-50 shadow-md'
+                    }`}
+                    style={{
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    {isTopMechanic && (
+                      <div
+                        className="absolute -top-2 -right-2 text-2xl animate-bounce"
+                        style={{
+                          animation: 'bounce 1s infinite, spin 3s linear infinite',
+                          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+                        }}
+                      >
+                        🏆
+                      </div>
+                    )}
+                    <div className="text-4xl mb-2 transition-transform duration-300 hover:scale-125">{mechanicAvatars[mechanic]}</div>
+                    <div className={`text-sm font-semibold ${
+                      selectedMechanic === mechanic ? 'text-blue-700' : isTopMechanic ? 'text-yellow-700' : 'text-gray-700'
+                    }`}>{mechanic}</div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -695,6 +718,45 @@ export default function PunchesTab() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+
+          {/* Cars Summary */}
+          <div className="bg-white rounded-xl shadow-md p-6 mt-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Car className="w-5 h-5 text-blue-600" />
+              Horas Totales por Carro
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {cars.map((car) => {
+                // Calculate total hours for this car from all mechanics
+                const totalCarHours = mechanicsSummary.reduce((total, mechanic) => {
+                  const carData = mechanic.cars.find(c => c.car_id === car.id)
+                  return total + (carData?.total_hours || 0)
+                }, 0)
+
+                return (
+                  <div
+                    key={car.id}
+                    className="border border-gray-200 rounded-lg p-3 hover:border-blue-300 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Car className="w-4 h-4 text-gray-500" />
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">
+                            {car.brand} {car.model}
+                          </p>
+                          <p className="text-xs text-gray-500">{car.year}</p>
+                        </div>
+                      </div>
+                      <span className="font-bold text-blue-600 text-sm">
+                        {formatHours(totalCarHours)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </>
