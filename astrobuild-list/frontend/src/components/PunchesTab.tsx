@@ -38,6 +38,12 @@ interface Car {
   year: number
 }
 
+interface CarHourDistribution {
+  car_id: number
+  hours: number
+  minutes: number
+}
+
 const mechanics = [
   'IgenieroErick',
   'ChristianCobra',
@@ -70,18 +76,17 @@ export default function PunchesTab() {
   const [view, setView] = useState<'clock' | 'history'>('clock')
   const [, forceUpdate] = useState(0)
   const [clockOffset, setClockOffset] = useState<number | null>(null)
+  const [showPunchOutModal, setShowPunchOutModal] = useState(false)
+  const [carDistributions, setCarDistributions] = useState<CarHourDistribution[]>([{ car_id: 0, hours: 0, minutes: 0 }])
 
   useEffect(() => {
-    // Calculate clock offset on mount
-    const calculateOffset = () => {
-      // Make a punch and immediately check the difference
-      const clientNow = Date.now()
-      // Assume server time is what we receive in punch timestamps
-      // We'll calculate this when we get the first punch
-      console.log('Client time on mount:', new Date(clientNow).toISOString())
+    // Try to load clock offset from localStorage
+    const savedOffset = localStorage.getItem('clockOffset')
+    if (savedOffset) {
+      setClockOffset(Number(savedOffset))
+      console.log('Loaded clock offset from storage:', savedOffset, 'ms')
     }
 
-    calculateOffset()
     loadData()
     socketClient.connect()
 
@@ -181,6 +186,7 @@ export default function PunchesTab() {
       // Calculate offset: how much ahead is the server compared to client
       const offset = serverPunchTime - clientTimeBeforePunch
       setClockOffset(offset)
+      localStorage.setItem('clockOffset', offset.toString())
       console.log('Clock offset calculated:', offset, 'ms (', (offset / 1000 / 60).toFixed(1), 'minutes )')
 
       setActivePunch(punch)
@@ -199,13 +205,95 @@ export default function PunchesTab() {
       return
     }
 
+    // Show modal to distribute hours
+    setCarDistributions([{ car_id: 0, hours: 0, minutes: 0 }])
+    setShowPunchOutModal(true)
+  }
+
+  const handleConfirmPunchOut = async () => {
+    if (!activePunch) return
+
     try {
+      // First create car work sessions for each distribution BEFORE punching out
+      const validDistributions = carDistributions.filter(d => d.car_id > 0 && (d.hours > 0 || d.minutes > 0))
+
+      for (const dist of validDistributions) {
+        // Create and immediately end the session
+        await api.startCarSession({
+          punch_id: activePunch.id,
+          car_id: dist.car_id,
+          mechanic_name: selectedMechanic,
+          notes: `${dist.hours}h ${dist.minutes}m trabajadas`
+        })
+
+        // Get the session we just created and end it
+        const sessions = await api.getCarWorkSessions({
+          mechanic_name: selectedMechanic,
+          car_id: dist.car_id
+        })
+        const lastSession = sessions[0]
+        if (lastSession && !lastSession.end_time) {
+          await api.endCarSession(lastSession.id, `${dist.hours}h ${dist.minutes}m trabajadas`)
+        }
+      }
+
+      // Then punch out (after all car sessions are saved)
       await api.punchOut(activePunch.id)
+
       setActivePunch(null)
+      setShowPunchOutModal(false)
       await loadData(false)
     } catch (error: any) {
+      console.error('Error al ponchar salida:', error)
       alert(error.message || 'Error al ponchar salida')
     }
+  }
+
+  const addCarDistribution = () => {
+    if (carDistributions.length < 3) {
+      setCarDistributions([...carDistributions, { car_id: 0, hours: 0, minutes: 0 }])
+    }
+  }
+
+  const removeCarDistribution = (index: number) => {
+    if (carDistributions.length > 1) {
+      setCarDistributions(carDistributions.filter((_, i) => i !== index))
+    }
+  }
+
+  const updateCarDistribution = (index: number, field: keyof CarHourDistribution, value: number) => {
+    const updated = [...carDistributions]
+    updated[index] = { ...updated[index], [field]: value }
+    setCarDistributions(updated)
+  }
+
+  const getTotalDistributedTime = () => {
+    return carDistributions.reduce((total, dist) => {
+      return total + (dist.hours * 60 + dist.minutes)
+    }, 0)
+  }
+
+  const getTotalWorkTime = () => {
+    if (!activePunch) return 0
+    const startMs = new Date(activePunch.punch_in).getTime()
+
+    // If we don't have a clock offset yet, calculate it on the fly from the activePunch
+    let offset = clockOffset
+    if (offset === null && activePunch) {
+      // Estimate offset from the punch_in time vs current client time
+      // This is a fallback in case offset wasn't saved
+      const serverTime = new Date(activePunch.punch_in).getTime()
+      const estimatedClientTime = serverTime - (4 * 60 * 60 * 1000) // Assume 4 hour difference
+      offset = serverTime - estimatedClientTime
+    }
+
+    const nowMs = Date.now() + (offset || 0)
+    const elapsedMs = nowMs - startMs
+
+    // Ensure we don't return negative values
+    if (elapsedMs < 0) return 0
+
+    return Math.floor(elapsedMs / 1000 / 60) // in minutes
   }
 
   const handleStartCarWork = async () => {
@@ -257,8 +345,21 @@ export default function PunchesTab() {
 
   const getElapsedTime = (startTime: string) => {
     const startMs = new Date(startTime).getTime()
-    const nowMs = Date.now() + (clockOffset || 0) // Apply clock offset if available
 
+    // Use saved offset or estimate it
+    let offset = clockOffset
+    if (offset === null) {
+      // Fallback: estimate offset assuming 4 hour difference
+      const savedOffset = localStorage.getItem('clockOffset')
+      if (savedOffset) {
+        offset = Number(savedOffset)
+      } else {
+        // Last resort: assume 4 hour offset based on Puerto Rico timezone
+        offset = 4 * 60 * 60 * 1000
+      }
+    }
+
+    const nowMs = Date.now() + offset
     const elapsedSeconds = Math.floor((nowMs - startMs) / 1000)
 
     if (elapsedSeconds <= 0) return '0s'
@@ -398,71 +499,6 @@ export default function PunchesTab() {
               )}
             </div>
           )}
-
-          {/* Car Work Session */}
-          {activePunch && (
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Car className="w-5 h-5 text-blue-600" />
-                Trabajo en Carros
-              </h3>
-
-              {!activeCarSession ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">Selecciona un carro para empezar a trabajar:</p>
-                  <select
-                    value={selectedCar || ''}
-                    onChange={(e) => setSelectedCar(Number(e.target.value))}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">-- Seleccionar Carro --</option>
-                    {cars.map((car) => (
-                      <option key={car.id} value={car.id}>
-                        {car.brand} {car.model} {car.year}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleStartCarWork}
-                    disabled={!selectedCar}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Play className="w-5 h-5" />
-                    Iniciar Trabajo en Carro
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm text-gray-600">Trabajando en:</p>
-                        <p className="text-lg font-bold text-blue-700">
-                          {activeCarSession.brand} {activeCarSession.model} {activeCarSession.year}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">Tiempo en este carro:</p>
-                        <p className="text-lg font-bold text-blue-700">
-                          {getElapsedTime(activeCarSession.start_time)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-600">Inicio: {formatTime(activeCarSession.start_time)}</p>
-                    </div>
-                    <button
-                      onClick={handleEndCarWork}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Square className="w-5 h-5" />
-                      Terminar Trabajo en Este Carro
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </>
       ) : (
         <>
@@ -555,6 +591,141 @@ export default function PunchesTab() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Punch Out Modal - Car Hour Distribution */}
+      {showPunchOutModal && activePunch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-red-500 to-orange-600 p-6 text-white rounded-t-2xl">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <LogOut className="w-6 h-6" />
+                Ponche de Salida - Distribución de Horas
+              </h3>
+              <p className="text-red-100 mt-1">Distribuye tus horas entre los carros en los que trabajaste</p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Work Time Summary */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Tiempo total trabajado:</p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {Math.floor(getTotalWorkTime() / 60)}h {getTotalWorkTime() % 60}m
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Tiempo distribuido:</p>
+                    <p className={`text-2xl font-bold ${getTotalDistributedTime() > getTotalWorkTime() ? 'text-red-600' : 'text-green-600'}`}>
+                      {Math.floor(getTotalDistributedTime() / 60)}h {getTotalDistributedTime() % 60}m
+                    </p>
+                  </div>
+                </div>
+                {getTotalDistributedTime() > getTotalWorkTime() && (
+                  <p className="text-red-600 text-sm mt-2 font-medium">
+                    ⚠️ El tiempo distribuido excede el tiempo total trabajado
+                  </p>
+                )}
+              </div>
+
+              {/* Car Distributions */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-gray-700">Carros trabajados:</h4>
+                  {carDistributions.length < 3 && (
+                    <button
+                      onClick={addCarDistribution}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-all"
+                    >
+                      + Agregar Carro
+                    </button>
+                  )}
+                </div>
+
+                {carDistributions.map((dist, index) => (
+                  <div key={index} className="border border-gray-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-700">Carro #{index + 1}</span>
+                      {carDistributions.length > 1 && (
+                        <button
+                          onClick={() => removeCarDistribution(index)}
+                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Seleccionar Carro:
+                      </label>
+                      <select
+                        value={dist.car_id}
+                        onChange={(e) => updateCarDistribution(index, 'car_id', Number(e.target.value))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value={0}>-- Seleccionar Carro --</option>
+                        {cars.map((car) => (
+                          <option key={car.id} value={car.id}>
+                            {car.brand} {car.model} {car.year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Horas:
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="24"
+                          value={dist.hours}
+                          onChange={(e) => updateCarDistribution(index, 'hours', Number(e.target.value))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Minutos:
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={dist.minutes}
+                          onChange={(e) => updateCarDistribution(index, 'minutes', Number(e.target.value))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowPunchOutModal(false)}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmPunchOut}
+                  disabled={getTotalDistributedTime() > getTotalWorkTime() || carDistributions.every(d => d.car_id === 0)}
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirmar Ponche de Salida
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

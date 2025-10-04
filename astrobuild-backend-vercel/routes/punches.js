@@ -206,28 +206,30 @@ router.post('/car-sessions/start', async (req, res) => {
       });
     }
 
-    // Verify punch is active
+    // Verify punch exists (can be active or completed)
     const punchCheck = await db.query(
-      'SELECT * FROM punches WHERE id = $1 AND status = $2',
-      [punch_id, 'active']
+      'SELECT * FROM punches WHERE id = $1',
+      [punch_id]
     );
 
     if (punchCheck.rows.length === 0) {
       return res.status(400).json({
-        error: 'No active punch found. Please punch in first.'
+        error: 'Punch not found.'
       });
     }
 
-    // Check if mechanic has an active car session
-    const activeSession = await db.query(
-      'SELECT * FROM car_work_sessions WHERE mechanic_name = $1 AND end_time IS NULL',
-      [mechanic_name]
-    );
+    // Only check for active sessions if the punch is still active
+    if (punchCheck.rows[0].status === 'active') {
+      const activeSession = await db.query(
+        'SELECT * FROM car_work_sessions WHERE mechanic_name = $1 AND end_time IS NULL',
+        [mechanic_name]
+      );
 
-    if (activeSession.rows.length > 0) {
-      return res.status(400).json({
-        error: 'Mechanic already working on another car. Please end current session first.'
-      });
+      if (activeSession.rows.length > 0) {
+        return res.status(400).json({
+          error: 'Mechanic already working on another car. Please end current session first.'
+        });
+      }
     }
 
     // Create new car work session
