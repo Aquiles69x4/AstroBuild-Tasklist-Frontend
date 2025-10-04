@@ -68,7 +68,9 @@
       "Bash(git remote set-url:*)",
       "Bash(git branch:*)",
       "Bash(git rm:*)",
-      "Bash(PORT=4000 npm run dev)"
+      "Bash(PORT=4000 npm run dev)",
+      "Bash(npm install:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

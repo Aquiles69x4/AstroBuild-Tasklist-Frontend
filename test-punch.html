@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Punch</title>
+</head>
+<body>
+    <h1>Test Backend Connection</h1>
+    <button onclick="testBackend()">Test Backend</button>
+    <button onclick="testPunch()">Test Punch Flow</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testBackend() {
+            try {
+                const res = await fetch('http://localhost:3001/api/mechanics');
+                const data = await res.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testPunch() {
+            try {
+                // Punch in
+                const punchIn = await fetch('http://localhost:3001/api/punches/punch-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mechanic_name: 'TestMechanic' })
+                });
+                const punchData = await punchIn.json();
+
+                // Start car session
+                const startSession = await fetch('http://localhost:3001/api/punches/car-sessions/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        punch_id: punchData.id,
+                        car_id: 1,
+                        mechanic_name: 'TestMechanic',
+                        notes: 'Test'
+                    })
+                });
+                const sessionData = await startSession.json();
+
+                // End session with 0.5 hours (30 minutes)
+                const endSession = await fetch(`http://localhost:3001/api/punches/car-sessions/end/${sessionData.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        notes: '0h 30m trabajadas',
+                        total_hours: 0.5
+                    })
+                });
+                const endedSession = await endSession.json();
+
+                document.getElementById('result').textContent = JSON.stringify(endedSession, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
