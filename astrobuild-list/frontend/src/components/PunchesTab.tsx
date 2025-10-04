@@ -191,10 +191,50 @@ export default function PunchesTab() {
     }
   }
 
+  const playPunchSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+
+      // Create a "punch" sound with two quick beeps
+      oscillator.frequency.value = 800
+      oscillator.type = 'sine'
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1)
+
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + 0.1)
+
+      // Second beep
+      setTimeout(() => {
+        const osc2 = audioContext.createOscillator()
+        const gain2 = audioContext.createGain()
+        osc2.connect(gain2)
+        gain2.connect(audioContext.destination)
+        osc2.frequency.value = 1000
+        osc2.type = 'sine'
+        gain2.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1)
+        osc2.start(audioContext.currentTime)
+        osc2.stop(audioContext.currentTime + 0.1)
+      }, 100)
+    } catch (e) {
+      console.log('Could not play sound:', e)
+    }
+  }
+
   const handlePunchIn = async () => {
     if (!selectedMechanic) return
 
     try {
+      // Play punch sound
+      playPunchSound()
+
       const clientTimeBeforePunch = Date.now()
       const punch = await api.punchIn(selectedMechanic)
       const serverPunchTime = new Date(punch.punch_in).getTime()
@@ -230,6 +270,9 @@ export default function PunchesTab() {
     if (!activePunch) return
 
     try {
+      // Play punch sound
+      playPunchSound()
+
       // First create car work sessions for each distribution BEFORE punching out
       const validDistributions = carDistributions.filter(d => d.car_id > 0 && (d.hours > 0 || d.minutes > 0))
 
@@ -458,7 +501,6 @@ export default function PunchesTab() {
               <Clock className="w-8 h-8" />
               Sistema de Ponches
             </h2>
-            <p className="text-blue-100 mt-1">Control de horas de trabajo y costos por carro</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -500,14 +542,19 @@ export default function PunchesTab() {
                 <button
                   key={mechanic}
                   onClick={() => setSelectedMechanic(mechanic)}
-                  className={`p-4 rounded-xl border-2 transition-all hover:scale-105 ${
+                  className={`p-5 rounded-2xl border-4 transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 ${
                     selectedMechanic === mechanic
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-300'
+                      ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg transform scale-105'
+                      : 'border-gray-400 bg-white hover:border-blue-500 hover:bg-blue-50 shadow-md'
                   }`}
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
                 >
-                  <div className="text-3xl mb-1">{mechanicAvatars[mechanic]}</div>
-                  <div className="text-sm font-medium text-gray-700">{mechanic}</div>
+                  <div className="text-4xl mb-2 transition-transform duration-300 hover:scale-125">{mechanicAvatars[mechanic]}</div>
+                  <div className={`text-sm font-semibold ${
+                    selectedMechanic === mechanic ? 'text-blue-700' : 'text-gray-700'
+                  }`}>{mechanic}</div>
                 </button>
               ))}
             </div>
