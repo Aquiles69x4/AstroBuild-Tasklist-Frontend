@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Trophy, Medal, Star, Zap, Target, Crown, TrendingUp } from 'lucide-react'
+import { Trophy, Medal, Star, Zap, Target, Crown, TrendingUp, MoreVertical } from 'lucide-react'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
 
@@ -50,6 +50,11 @@ export default function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState<Mechanic[]>([])
   const [stats, setStats] = useState<LeaderboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingMechanic, setEditingMechanic] = useState<Mechanic | null>(null)
+  const [editPassword, setEditPassword] = useState('')
+  const [editPoints, setEditPoints] = useState('')
+  const [editError, setEditError] = useState('')
 
   useEffect(() => {
     loadLeaderboard()
@@ -85,6 +90,51 @@ export default function Leaderboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleEditPoints = (mechanic: Mechanic) => {
+    setEditingMechanic(mechanic)
+    setEditPoints(mechanic.total_points.toString())
+    setEditPassword('')
+    setEditError('')
+    setShowEditModal(true)
+  }
+
+  const handleSubmitEdit = async () => {
+    if (!editingMechanic) return
+
+    setEditError('')
+
+    if (!editPassword) {
+      setEditError('La contraseña es requerida')
+      return
+    }
+
+    const points = parseInt(editPoints)
+    if (isNaN(points) || points < 0) {
+      setEditError('Los puntos deben ser un número válido mayor o igual a 0')
+      return
+    }
+
+    try {
+      await api.updateMechanicPoints(editingMechanic.name, points, editPassword)
+      await loadLeaderboard()
+      await loadStats()
+      setShowEditModal(false)
+      setEditingMechanic(null)
+      setEditPassword('')
+      setEditPoints('')
+    } catch (error: any) {
+      setEditError(error.message || 'Error al actualizar los puntos')
+    }
+  }
+
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setEditingMechanic(null)
+    setEditPassword('')
+    setEditPoints('')
+    setEditError('')
   }
 
   if (loading) {
@@ -167,12 +217,21 @@ export default function Leaderboard() {
                         </div>
 
                         {/* Points */}
-                        <div className="text-right">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <Star className="w-5 h-5 text-yellow-500 hover:rotate-180 transition-transform duration-500" />
-                            <span className="text-2xl font-bold text-gray-900">{mechanic.total_points}</span>
+                        <div className="text-right flex items-center gap-2">
+                          <div>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <Star className="w-5 h-5 text-yellow-500 hover:rotate-180 transition-transform duration-500" />
+                              <span className="text-2xl font-bold text-gray-900">{mechanic.total_points}</span>
+                            </div>
+                            <p className="text-sm text-gray-500">puntos</p>
                           </div>
-                          <p className="text-sm text-gray-500">puntos</p>
+                          <button
+                            onClick={() => handleEditPoints(mechanic)}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                            title="Editar puntos"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
 
@@ -431,6 +490,72 @@ export default function Leaderboard() {
           animation: fade-in-up 0.8s ease-out;
         }
       `}</style>
+
+      {/* Edit Points Modal */}
+      {showEditModal && editingMechanic && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-6 text-white rounded-t-2xl">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <Trophy className="w-6 h-6" />
+                Editar Puntos
+              </h3>
+              <p className="text-yellow-100 mt-1">
+                {editingMechanic.name}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {editError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+                  ⚠️ {editError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña de Administrador:
+                </label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                  placeholder="Ingresa la contraseña"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Puntos Totales:
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editPoints}
+                  onChange={(e) => setEditPoints(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={closeEditModal}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmitEdit}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl font-semibold hover:from-yellow-500 hover:to-orange-600 shadow-md hover:shadow-lg transition-all"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

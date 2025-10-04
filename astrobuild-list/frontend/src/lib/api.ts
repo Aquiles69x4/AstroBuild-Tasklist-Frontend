@@ -102,6 +102,13 @@ class ApiClient {
     return this.request('/mechanics/stats')
   }
 
+  async updateMechanicPoints(name: string, total_points: number, password: string) {
+    return this.request(`/mechanics/${name}/points`, {
+      method: 'PUT',
+      body: JSON.stringify({ total_points, password }),
+    })
+  }
+
   // Punches API
   async getPunches(filters?: { date?: string; mechanic_name?: string; status?: string; limit?: number; offset?: number }) {
     const params = new URLSearchParams()

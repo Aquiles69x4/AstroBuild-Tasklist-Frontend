@@ -138,4 +138,47 @@ router.get('/:name', async (req, res) => {
   }
 });
 
+// Update mechanic points (admin function)
+router.put('/:name/points', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const { total_points, password } = req.body;
+
+    // Verify password
+    if (password !== 'hola123') {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // Validate points
+    if (total_points === undefined || total_points === null) {
+      return res.status(400).json({ error: 'total_points is required' });
+    }
+
+    const points = parseInt(total_points);
+    if (isNaN(points) || points < 0) {
+      return res.status(400).json({ error: 'total_points must be a non-negative number' });
+    }
+
+    // Update mechanic points
+    const result = await db.query(
+      'UPDATE mechanics SET total_points = $1 WHERE name = $2 RETURNING *',
+      [points, name]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Mechanic not found' });
+    }
+
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('mechanic-updated', result.rows[0]);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating mechanic points:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
