@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Car, Trophy } from 'lucide-react'
+import { Car, Trophy, Clock } from 'lucide-react'
 import IntegratedSection from './IntegratedSection'
 import Leaderboard from './Leaderboard'
+import PunchesTab from './PunchesTab'
 import SimpleButton from './SimpleButton'
 
 export default function Dashboard() {
@@ -13,6 +14,7 @@ export default function Dashboard() {
   const tabs = [
     { id: 'workshop', name: 'Taller', icon: Car },
     { id: 'leaderboard', name: 'Leaderboard', icon: Trophy },
+    { id: 'punches', name: 'Ponches', icon: Clock },
   ]
 
 
@@ -93,6 +95,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {activeTab === 'workshop' && <IntegratedSection />}
         {activeTab === 'leaderboard' && <Leaderboard />}
+        {activeTab === 'punches' && <PunchesTab />}
       </main>
     </div>
   )

@@ -37,10 +37,12 @@ io.on('connection', (socket) => {
 const carsRoutes = require('./routes/cars');
 const tasksRoutes = require('./routes/tasks');
 const mechanicsRoutes = require('./routes/mechanics');
+const punchesRoutes = require('./routes/punches');
 
 app.use('/api/cars', carsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/mechanics', mechanicsRoutes);
+app.use('/api/punches', punchesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'AstroBuild List API is running! (No login required)' });

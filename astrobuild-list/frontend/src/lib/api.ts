@@ -101,6 +101,86 @@ class ApiClient {
   async getMechanicsStats() {
     return this.request('/mechanics/stats')
   }
+
+  // Punches API
+  async getPunches(filters?: { date?: string; mechanic_name?: string; status?: string }) {
+    const params = new URLSearchParams()
+    if (filters?.date) params.append('date', filters.date)
+    if (filters?.mechanic_name) params.append('mechanic_name', filters.mechanic_name)
+    if (filters?.status) params.append('status', filters.status)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches${query}`)
+  }
+
+  async getActivePunch(mechanic_name: string) {
+    return this.request(`/punches/active/${mechanic_name}`)
+  }
+
+  async punchIn(mechanic_name: string) {
+    return this.request('/punches/punch-in', {
+      method: 'POST',
+      body: JSON.stringify({ mechanic_name }),
+    })
+  }
+
+  async punchOut(punchId: number) {
+    return this.request(`/punches/punch-out/${punchId}`, {
+      method: 'PUT',
+    })
+  }
+
+  async getCarWorkSessions(filters?: { date?: string; mechanic_name?: string; car_id?: number }) {
+    const params = new URLSearchParams()
+    if (filters?.date) params.append('date', filters.date)
+    if (filters?.mechanic_name) params.append('mechanic_name', filters.mechanic_name)
+    if (filters?.car_id) params.append('car_id', filters.car_id.toString())
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches/car-sessions${query}`)
+  }
+
+  async getActiveCarSession(mechanic_name: string) {
+    return this.request(`/punches/car-sessions/active/${mechanic_name}`)
+  }
+
+  async startCarSession(data: { punch_id: number; car_id: number; mechanic_name: string; notes?: string }) {
+    return this.request('/punches/car-sessions/start', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async endCarSession(sessionId: number, notes?: string) {
+    return this.request(`/punches/car-sessions/end/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ notes }),
+    })
+  }
+
+  async getPayrollSummary(start_date?: string, end_date?: string) {
+    const params = new URLSearchParams()
+    if (start_date) params.append('start_date', start_date)
+    if (end_date) params.append('end_date', end_date)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches/summary/payroll${query}`)
+  }
+
+  async getCarCostsSummary(start_date?: string, end_date?: string) {
+    const params = new URLSearchParams()
+    if (start_date) params.append('start_date', start_date)
+    if (end_date) params.append('end_date', end_date)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches/summary/car-costs${query}`)
+  }
+
+  async deletePunch(punchId: number) {
+    return this.request(`/punches/${punchId}`, {
+      method: 'DELETE',
+    })
+  }
 }
 
 export const api = new ApiClient()
