@@ -68,14 +68,25 @@ export default function PunchesTab() {
   const [selectedCar, setSelectedCar] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'clock' | 'history'>('clock')
+  const [, forceUpdate] = useState(0)
+  const [clockOffset, setClockOffset] = useState<number | null>(null)
 
   useEffect(() => {
+    // Calculate clock offset on mount
+    const calculateOffset = () => {
+      // Make a punch and immediately check the difference
+      const clientNow = Date.now()
+      // Assume server time is what we receive in punch timestamps
+      // We'll calculate this when we get the first punch
+      console.log('Client time on mount:', new Date(clientNow).toISOString())
+    }
+
+    calculateOffset()
     loadData()
     socketClient.connect()
 
     const handleUpdate = () => {
-      console.log('Punch/session event received, reloading data...')
-      loadData()
+      loadData(false)
     }
 
     socketClient.on('punch-added', handleUpdate)
@@ -84,12 +95,16 @@ export default function PunchesTab() {
     socketClient.on('car-session-started', handleUpdate)
     socketClient.on('car-session-ended', handleUpdate)
 
+    // Force re-render every second to update elapsed time
+    const timer = setInterval(() => forceUpdate(n => n + 1), 1000)
+
     return () => {
       socketClient.off('punch-added', handleUpdate)
       socketClient.off('punch-updated', handleUpdate)
       socketClient.off('punch-deleted', handleUpdate)
       socketClient.off('car-session-started', handleUpdate)
       socketClient.off('car-session-ended', handleUpdate)
+      clearInterval(timer)
     }
   }, [])
 
@@ -100,9 +115,11 @@ export default function PunchesTab() {
     }
   }, [selectedMechanic])
 
-  const loadData = async () => {
+  const loadData = async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) {
+        setLoading(true)
+      }
       const today = new Date().toISOString().split('T')[0]
 
       const [punchesData, sessionsData, carsData] = await Promise.all([
@@ -117,7 +134,9 @@ export default function PunchesTab() {
     } catch (error) {
       console.error('Error loading punches data:', error)
     } finally {
-      setLoading(false)
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }
 
@@ -155,9 +174,17 @@ export default function PunchesTab() {
     if (!selectedMechanic) return
 
     try {
+      const clientTimeBeforePunch = Date.now()
       const punch = await api.punchIn(selectedMechanic)
+      const serverPunchTime = new Date(punch.punch_in).getTime()
+
+      // Calculate offset: how much ahead is the server compared to client
+      const offset = serverPunchTime - clientTimeBeforePunch
+      setClockOffset(offset)
+      console.log('Clock offset calculated:', offset, 'ms (', (offset / 1000 / 60).toFixed(1), 'minutes )')
+
       setActivePunch(punch)
-      await loadData()
+      await loadData(false)
     } catch (error: any) {
       alert(error.message || 'Error al ponchar entrada')
     }
@@ -175,7 +202,7 @@ export default function PunchesTab() {
     try {
       await api.punchOut(activePunch.id)
       setActivePunch(null)
-      await loadData()
+      await loadData(false)
     } catch (error: any) {
       alert(error.message || 'Error al ponchar salida')
     }
@@ -192,7 +219,7 @@ export default function PunchesTab() {
       })
       setActiveCarSession(session)
       setSelectedCar(null)
-      await loadData()
+      await loadData(false)
     } catch (error: any) {
       alert(error.message || 'Error al iniciar trabajo en carro')
     }
@@ -204,7 +231,7 @@ export default function PunchesTab() {
     try {
       await api.endCarSession(activeCarSession.id)
       setActiveCarSession(null)
-      await loadData()
+      await loadData(false)
     } catch (error: any) {
       alert(error.message || 'Error al terminar trabajo en carro')
     }
@@ -212,7 +239,9 @@ export default function PunchesTab() {
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleTimeString('es-MX', {
+    // Manually adjust UTC to Puerto Rico time (UTC-4)
+    const prTime = new Date(date.getTime() - (4 * 60 * 60 * 1000))
+    return prTime.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -222,15 +251,29 @@ export default function PunchesTab() {
   const formatHours = (hours?: number | string) => {
     if (!hours) return '0.00'
     const numHours = typeof hours === 'string' ? parseFloat(hours) : hours
-    if (isNaN(numHours)) return '0.00'
+    if (isNaN(numHours) || numHours < 0) return '0.00'
     return numHours.toFixed(2)
   }
 
   const getElapsedTime = (startTime: string) => {
-    const start = new Date(startTime).getTime()
-    const now = new Date().getTime()
-    const elapsed = (now - start) / 1000 / 3600
-    return formatHours(elapsed)
+    const startMs = new Date(startTime).getTime()
+    const nowMs = Date.now() + (clockOffset || 0) // Apply clock offset if available
+
+    const elapsedSeconds = Math.floor((nowMs - startMs) / 1000)
+
+    if (elapsedSeconds <= 0) return '0s'
+
+    const hours = Math.floor(elapsedSeconds / 3600)
+    const minutes = Math.floor((elapsedSeconds % 3600) / 60)
+    const seconds = elapsedSeconds % 60
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`
+    } else {
+      return `${seconds}s`
+    }
   }
 
   if (loading) {
@@ -348,7 +391,7 @@ export default function PunchesTab() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Tiempo transcurrido:</p>
-                      <p className="text-lg font-bold text-green-700">{getElapsedTime(activePunch.punch_in)} hrs</p>
+                      <p className="text-lg font-bold text-green-700">{getElapsedTime(activePunch.punch_in)}</p>
                     </div>
                   </div>
                 </div>
@@ -401,7 +444,7 @@ export default function PunchesTab() {
                       <div className="text-right">
                         <p className="text-sm text-gray-600">Tiempo en este carro:</p>
                         <p className="text-lg font-bold text-blue-700">
-                          {getElapsedTime(activeCarSession.start_time)} hrs
+                          {getElapsedTime(activeCarSession.start_time)}
                         </p>
                       </div>
                     </div>
