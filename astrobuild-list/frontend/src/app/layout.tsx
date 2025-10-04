@@ -6,6 +6,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'AstroBuild List - Gestión de Taller',
   description: 'Sistema de gestión de tareas para taller de reparación de autos',
+  icons: {
+    icon: '/Icons/final_192x192.png',
+    shortcut: '/Icons/final_192x192.png',
+    apple: '/Icons/final_192x192.png',
+  },
 }
 
 export const viewport = {
