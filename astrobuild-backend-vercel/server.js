@@ -1,8 +1,21 @@
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+// Make io available globally for routes
+global.io = io;
+
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
@@ -10,6 +23,15 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"]
 }));
 app.use(express.json());
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
 
 // Routes (no authentication needed)
 const carsRoutes = require('./routes/cars');
@@ -66,8 +88,9 @@ if (process.env.VERCEL) {
   module.exports = app;
 } else {
   // Para desarrollo local
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚗 AstroBuild List server running on port ${PORT}`);
     console.log(`✨ No authentication required - collaborative mode!`);
+    console.log(`🔌 Socket.IO enabled for real-time updates`);
   });
 }

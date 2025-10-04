@@ -77,29 +77,39 @@ export default function IntegratedSection() {
   const [showNewTaskInput, setShowNewTaskInput] = useState<{ [carId: number]: boolean }>({})
 
   useEffect(() => {
-    loadData()
+    loadData(true) // Initial load with spinner
 
-    // Socket listeners
-    socketClient.on('car-added', loadData)
-    socketClient.on('car-updated', loadData)
-    socketClient.on('car-deleted', loadData)
-    socketClient.on('task-added', loadData)
-    socketClient.on('task-updated', loadData)
-    socketClient.on('task-deleted', loadData)
+    // Connect socket
+    socketClient.connect()
+
+    // Socket listeners - reload without spinner for seamless updates
+    const handleUpdate = () => {
+      console.log('Socket event received, reloading data...')
+      loadData(false)
+    }
+
+    socketClient.on('car-added', handleUpdate)
+    socketClient.on('car-updated', handleUpdate)
+    socketClient.on('car-deleted', handleUpdate)
+    socketClient.on('task-added', handleUpdate)
+    socketClient.on('task-updated', handleUpdate)
+    socketClient.on('task-deleted', handleUpdate)
 
     return () => {
-      socketClient.off('car-added', loadData)
-      socketClient.off('car-updated', loadData)
-      socketClient.off('car-deleted', loadData)
-      socketClient.off('task-added', loadData)
-      socketClient.off('task-updated', loadData)
-      socketClient.off('task-deleted', loadData)
+      socketClient.off('car-added', handleUpdate)
+      socketClient.off('car-updated', handleUpdate)
+      socketClient.off('car-deleted', handleUpdate)
+      socketClient.off('task-added', handleUpdate)
+      socketClient.off('task-updated', handleUpdate)
+      socketClient.off('task-deleted', handleUpdate)
     }
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (showLoadingSpinner = true) => {
     try {
-      setLoading(true)
+      if (showLoadingSpinner) {
+        setLoading(true)
+      }
       const [carsData, allTasks] = await Promise.all([
         api.getCars(),
         api.getTasks()
@@ -120,7 +130,9 @@ export default function IntegratedSection() {
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
-      setLoading(false)
+      if (showLoadingSpinner) {
+        setLoading(false)
+      }
     }
   }
 
@@ -151,9 +163,7 @@ export default function IntegratedSection() {
         setNewTaskMechanic(prev => ({ ...prev, [carId]: '' }))
         setNewTaskPriority(prev => ({ ...prev, [carId]: false }))
         setShowNewTaskInput(prev => ({ ...prev, [carId]: false }))
-
-        // Reload data
-        loadData()
+        // Socket will handle update via 'task-added' event
       }
     } catch (error) {
       console.error('Error adding task:', error)
@@ -175,7 +185,7 @@ export default function IntegratedSection() {
         status: newStatus,
         assigned_mechanic: null
       })
-      loadData() // Reload to get fresh data
+      // Socket will handle update via 'task-updated' event
     } catch (error) {
       console.error('Error updating task:', error)
     }
@@ -240,8 +250,7 @@ export default function IntegratedSection() {
         delete updated[taskId]
         return updated
       })
-
-      loadData() // Reload to get fresh data
+      // Socket will handle update via 'task-updated' event
     } catch (error) {
       console.error('Error completing task:', error)
     }
@@ -258,19 +267,10 @@ export default function IntegratedSection() {
   const handleDeleteTask = async (taskId: number) => {
     if (confirm('¿Estás seguro de que quieres eliminar esta tarea?')) {
       try {
-        // Update UI immediately
-        setTasks(prev => {
-          const newTasks = { ...prev }
-          Object.keys(newTasks).forEach(carId => {
-            newTasks[parseInt(carId)] = newTasks[parseInt(carId)].filter(task => task.id !== taskId)
-          })
-          return newTasks
-        })
-
         await api.deleteTask(taskId)
+        // Socket will handle update via 'task-deleted' event
       } catch (error) {
         console.error('Error deleting task:', error)
-        loadData() // Reload if error
       }
     }
   }
@@ -279,12 +279,9 @@ export default function IntegratedSection() {
     if (confirm('¿Estás seguro de que quieres eliminar este carro? Esto eliminará también todas sus tareas.')) {
       try {
         await api.deleteCar(carId)
-        // Reload data after successful deletion
-        loadData()
+        // Socket will handle update via 'car-deleted' event
       } catch (error) {
         console.error('Error deleting car:', error)
-        // Reload data even if deletion failed to sync state
-        loadData()
       }
     }
   }
@@ -298,7 +295,7 @@ export default function IntegratedSection() {
       }
       setShowCarModal(false)
       setEditingCar(null)
-      loadData()
+      // Socket will handle update via 'car-added' or 'car-updated' event
     } catch (error) {
       console.error('Error saving car:', error)
       throw error
