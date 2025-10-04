@@ -44,6 +44,18 @@ interface CarHourDistribution {
   minutes: number
 }
 
+interface MechanicSummary {
+  mechanic_name: string
+  total_hours: number
+  cars: {
+    car_id: number
+    brand: string
+    model: string
+    year: number
+    total_hours: number
+  }[]
+}
+
 const mechanics = [
   'IgenieroErick',
   'ChristianCobra',
@@ -78,6 +90,8 @@ export default function PunchesTab() {
   const [clockOffset, setClockOffset] = useState<number | null>(null)
   const [showPunchOutModal, setShowPunchOutModal] = useState(false)
   const [carDistributions, setCarDistributions] = useState<CarHourDistribution[]>([{ car_id: 0, hours: 0, minutes: 0 }])
+  const [mechanicsSummary, setMechanicsSummary] = useState<MechanicSummary[]>([])
+  const [expandedMechanics, setExpandedMechanics] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     // Try to load clock offset from localStorage
@@ -127,15 +141,17 @@ export default function PunchesTab() {
       }
       const today = new Date().toISOString().split('T')[0]
 
-      const [punchesData, sessionsData, carsData] = await Promise.all([
+      const [punchesData, sessionsData, carsData, summaryData] = await Promise.all([
         api.getPunches({ date: today }),
         api.getCarWorkSessions({ date: today }),
-        api.getCars()
+        api.getCars(),
+        api.getMechanicCarsSummary()
       ])
 
       setTodayPunches(punchesData)
       setTodayCarSessions(sessionsData)
       setCars(carsData)
+      setMechanicsSummary(summaryData)
     } catch (error) {
       console.error('Error loading punches data:', error)
     } finally {
@@ -218,6 +234,9 @@ export default function PunchesTab() {
       const validDistributions = carDistributions.filter(d => d.car_id > 0 && (d.hours > 0 || d.minutes > 0))
 
       for (const dist of validDistributions) {
+        // Calculate total hours in decimal format
+        const totalHours = dist.hours + (dist.minutes / 60)
+
         // Create and immediately end the session
         await api.startCarSession({
           punch_id: activePunch.id,
@@ -233,7 +252,11 @@ export default function PunchesTab() {
         })
         const lastSession = sessions[0]
         if (lastSession && !lastSession.end_time) {
-          await api.endCarSession(lastSession.id, `${dist.hours}h ${dist.minutes}m trabajadas`)
+          await api.endCarSession(
+            lastSession.id,
+            `${dist.hours}h ${dist.minutes}m trabajadas`,
+            totalHours
+          )
         }
       }
 
@@ -296,6 +319,42 @@ export default function PunchesTab() {
     return Math.floor(elapsedMs / 1000 / 60) // in minutes
   }
 
+  const toggleMechanicExpanded = (mechanicName: string) => {
+    const newExpanded = new Set(expandedMechanics)
+    if (newExpanded.has(mechanicName)) {
+      newExpanded.delete(mechanicName)
+    } else {
+      newExpanded.add(mechanicName)
+    }
+    setExpandedMechanics(newExpanded)
+  }
+
+  const handleResetMechanicHours = async (mechanicName: string) => {
+    if (!confirm(`¿Resetear las horas de ${mechanicName}? Esto marcará el período como pagado.`)) {
+      return
+    }
+
+    try {
+      await api.resetMechanicHours(mechanicName)
+      await loadData(false)
+    } catch (error: any) {
+      alert(error.message || 'Error al resetear horas')
+    }
+  }
+
+  const handleResetAllHours = async () => {
+    if (!confirm('¿Resetear las horas de TODOS los mecánicos? Esto marcará el período como pagado.')) {
+      return
+    }
+
+    try {
+      await api.resetAllHours()
+      await loadData(false)
+    } catch (error: any) {
+      alert(error.message || 'Error al resetear todas las horas')
+    }
+  }
+
   const handleStartCarWork = async () => {
     if (!activePunch || !selectedCar) return
 
@@ -337,10 +396,14 @@ export default function PunchesTab() {
   }
 
   const formatHours = (hours?: number | string) => {
-    if (!hours) return '0.00'
+    if (!hours) return '0h 0m'
     const numHours = typeof hours === 'string' ? parseFloat(hours) : hours
-    if (isNaN(numHours) || numHours < 0) return '0.00'
-    return numHours.toFixed(2)
+    if (isNaN(numHours) || numHours < 0) return '0h 0m'
+
+    const h = Math.floor(numHours)
+    const m = Math.round((numHours - h) * 60)
+
+    return `${h}h ${m}m`
   }
 
   const getElapsedTime = (startTime: string) => {
@@ -502,92 +565,89 @@ export default function PunchesTab() {
         </>
       ) : (
         <>
-          {/* History View */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Today's Punches */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                Ponches de Hoy
+          {/* Summary View */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                <DollarSign className="w-6 h-6 text-green-600" />
+                Resumen de Horas Acumuladas
               </h3>
-              <div className="space-y-3">
-                {todayPunches.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No hay ponches hoy</p>
-                ) : (
-                  todayPunches.map((punch) => (
-                    <div key={punch.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{mechanicAvatars[punch.mechanic_name]}</span>
-                          <span className="font-medium">{punch.mechanic_name}</span>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          punch.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {punch.status === 'active' ? 'Activo' : 'Completado'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-gray-600">Entrada:</span>
-                          <span className="ml-2 font-medium">{formatTime(punch.punch_in)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Salida:</span>
-                          <span className="ml-2 font-medium">
-                            {punch.punch_out ? formatTime(punch.punch_out) : '-'}
-                          </span>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-gray-600">Total horas:</span>
-                          <span className="ml-2 font-bold text-blue-600">
-                            {formatHours(punch.total_hours)} hrs
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <button
+                onClick={handleResetAllHours}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-all flex items-center gap-2"
+              >
+                🔄 Resetear Todas las Horas
+              </button>
             </div>
 
-            {/* Today's Car Sessions */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Car className="w-5 h-5 text-purple-600" />
-                Sesiones en Carros Hoy
-              </h3>
-              <div className="space-y-3">
-                {todayCarSessions.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No hay sesiones hoy</p>
-                ) : (
-                  todayCarSessions.map((session) => (
-                    <div key={session.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-purple-700">
-                            {session.brand} {session.model} {session.year}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {mechanicAvatars[session.mechanic_name]} {session.mechanic_name}
-                          </p>
+            <div className="space-y-4">
+              {mechanicsSummary.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No hay horas registradas</p>
+              ) : (
+                mechanicsSummary.map((mechanic) => (
+                  <div key={mechanic.mechanic_name} className="border border-gray-200 rounded-xl overflow-hidden">
+                    {/* Mechanic Header */}
+                    <div
+                      className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 cursor-pointer hover:from-blue-100 hover:to-purple-100 transition-all"
+                      onClick={() => toggleMechanicExpanded(mechanic.mechanic_name)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{mechanicAvatars[mechanic.mechanic_name]}</span>
+                          <div>
+                            <p className="font-bold text-lg text-gray-800">{mechanic.mechanic_name}</p>
+                            <p className="text-sm text-gray-600">
+                              {mechanic.cars.length} {mechanic.cars.length === 1 ? 'carro' : 'carros'} trabajados
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">Horas:</p>
-                          <p className="font-bold text-purple-600">
-                            {formatHours(session.total_hours)} hrs
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">Total Acumulado</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {formatHours(mechanic.total_hours)}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleResetMechanicHours(mechanic.mechanic_name)
+                            }}
+                            className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all"
+                          >
+                            Resetear
+                          </button>
                         </div>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {formatTime(session.start_time)} - {session.end_time ? formatTime(session.end_time) : 'En progreso'}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+
+                    {/* Expanded Car Details */}
+                    {expandedMechanics.has(mechanic.mechanic_name) && mechanic.cars.length > 0 && (
+                      <div className="bg-white p-4 border-t border-gray-200">
+                        <p className="text-sm font-semibold text-gray-600 mb-3">Desglose por carro:</p>
+                        <div className="space-y-2">
+                          {mechanic.cars.map((car) => (
+                            <div
+                              key={car.car_id}
+                              className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Car className="w-4 h-4 text-purple-600" />
+                                <span className="font-medium text-gray-700">
+                                  {car.brand} {car.model} {car.year}
+                                </span>
+                              </div>
+                              <span className="font-bold text-purple-600">
+                                {formatHours(car.total_hours)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>
@@ -717,7 +777,7 @@ export default function PunchesTab() {
                 </button>
                 <button
                   onClick={handleConfirmPunchOut}
-                  disabled={getTotalDistributedTime() > getTotalWorkTime() || carDistributions.every(d => d.car_id === 0)}
+                  disabled={getTotalDistributedTime() > getTotalWorkTime()}
                   className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirmar Ponche de Salida

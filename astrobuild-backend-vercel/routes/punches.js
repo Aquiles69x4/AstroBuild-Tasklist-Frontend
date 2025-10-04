@@ -256,21 +256,29 @@ router.post('/car-sessions/start', async (req, res) => {
 router.put('/car-sessions/end/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { notes } = req.body;
+    const { notes, total_hours } = req.body;
+    console.log('Ending car session:', id, 'notes:', notes, 'total_hours:', total_hours);
 
-    // Update session with end_time (trigger will calculate hours)
-    const updateData = { end_time: 'CURRENT_TIMESTAMP' };
-    if (notes) {
-      updateData.notes = notes;
+    // Update session with end_time and optionally total_hours (if provided from distribution)
+    let query, params;
+
+    if (total_hours !== undefined && total_hours !== null) {
+      // If total_hours is provided (from time distribution), use it directly
+      query = `UPDATE car_work_sessions
+               SET end_time = CURRENT_TIMESTAMP, notes = COALESCE($2, notes), total_hours = $3
+               WHERE id = $1
+               RETURNING *`;
+      params = [id, notes || null, total_hours];
+    } else {
+      // Otherwise let the trigger calculate from start_time to end_time
+      query = `UPDATE car_work_sessions
+               SET end_time = CURRENT_TIMESTAMP, notes = COALESCE($2, notes)
+               WHERE id = $1
+               RETURNING *`;
+      params = [id, notes || null];
     }
 
-    const result = await db.query(
-      `UPDATE car_work_sessions
-       SET end_time = CURRENT_TIMESTAMP, notes = COALESCE($2, notes)
-       WHERE id = $1
-       RETURNING *`,
-      [id, notes || null]
-    );
+    const result = await db.query(query, params);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Car work session not found' });
@@ -362,6 +370,119 @@ router.get('/summary/car-costs', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching car costs summary:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get mechanic-car hours breakdown (for accumulated hours display)
+router.get('/summary/mechanic-cars', async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    // Get all mechanics with their last reset date
+    const mechanics = await db.query('SELECT name, last_reset_date FROM mechanics');
+
+    // Build result for each mechanic
+    const result = [];
+
+    for (const mechanic of mechanics.rows) {
+      // First get car sessions grouped by car for this mechanic
+      let sessionQuery = `
+        SELECT
+          cws.car_id,
+          c.brand,
+          c.model,
+          c.year,
+          SUM(cws.total_hours) as total_hours
+        FROM car_work_sessions cws
+        LEFT JOIN cars c ON cws.car_id = c.id
+        WHERE cws.end_time IS NOT NULL
+        AND cws.mechanic_name = $1
+      `;
+      const params = [mechanic.name];
+
+      // Filter by reset date if exists
+      if (mechanic.last_reset_date) {
+        params.push(mechanic.last_reset_date);
+        sessionQuery += ` AND cws.start_time > $${params.length}`;
+      }
+
+      if (start_date) {
+        params.push(start_date);
+        sessionQuery += ` AND DATE(cws.start_time) >= $${params.length}`;
+      }
+
+      if (end_date) {
+        params.push(end_date);
+        sessionQuery += ` AND DATE(cws.start_time) <= $${params.length}`;
+      }
+
+      sessionQuery += ' GROUP BY cws.car_id, c.brand, c.model, c.year ORDER BY total_hours DESC';
+
+      const sessions = await db.query(sessionQuery, params);
+
+      const total_hours = sessions.rows.reduce((sum, s) => sum + parseFloat(s.total_hours || 0), 0);
+
+      result.push({
+        mechanic_name: mechanic.name,
+        total_hours,
+        cars: sessions.rows.map(s => ({
+          car_id: s.car_id,
+          brand: s.brand,
+          model: s.model,
+          year: s.year,
+          total_hours: parseFloat(s.total_hours || 0)
+        }))
+      });
+    }
+
+    // Sort by total hours descending
+    result.sort((a, b) => b.total_hours - a.total_hours);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching mechanic-car summary:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset hours for a mechanic (mark as paid)
+router.post('/reset-hours/:mechanic_name', async (req, res) => {
+  try {
+    const { mechanic_name } = req.params;
+
+    // Update mechanic's last_reset_date to now
+    await db.query(
+      'UPDATE mechanics SET last_reset_date = CURRENT_TIMESTAMP WHERE name = $1',
+      [mechanic_name]
+    );
+
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('hours-reset', { mechanic_name });
+    }
+
+    res.json({ message: 'Hours reset successfully', mechanic_name });
+  } catch (error) {
+    console.error('Error resetting hours:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset all hours (mark all as paid)
+router.post('/reset-hours', async (req, res) => {
+  try {
+    // Update all mechanics' last_reset_date to now
+    await db.query('UPDATE mechanics SET last_reset_date = CURRENT_TIMESTAMP');
+
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('all-hours-reset');
+    }
+
+    res.json({ message: 'All hours reset successfully' });
+  } catch (error) {
+    console.error('Error resetting all hours:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

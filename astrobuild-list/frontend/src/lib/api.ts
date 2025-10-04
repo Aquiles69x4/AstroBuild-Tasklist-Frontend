@@ -151,10 +151,10 @@ class ApiClient {
     })
   }
 
-  async endCarSession(sessionId: number, notes?: string) {
+  async endCarSession(sessionId: number, notes?: string, total_hours?: number) {
     return this.request(`/punches/car-sessions/end/${sessionId}`, {
       method: 'PUT',
-      body: JSON.stringify({ notes }),
+      body: JSON.stringify({ notes, total_hours }),
     })
   }
 
@@ -179,6 +179,27 @@ class ApiClient {
   async deletePunch(punchId: number) {
     return this.request(`/punches/${punchId}`, {
       method: 'DELETE',
+    })
+  }
+
+  async getMechanicCarsSummary(start_date?: string, end_date?: string) {
+    const params = new URLSearchParams()
+    if (start_date) params.append('start_date', start_date)
+    if (end_date) params.append('end_date', end_date)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches/summary/mechanic-cars${query}`)
+  }
+
+  async resetMechanicHours(mechanic_name: string) {
+    return this.request(`/punches/reset-hours/${mechanic_name}`, {
+      method: 'POST',
+    })
+  }
+
+  async resetAllHours() {
+    return this.request('/punches/reset-hours', {
+      method: 'POST',
     })
   }
 }
