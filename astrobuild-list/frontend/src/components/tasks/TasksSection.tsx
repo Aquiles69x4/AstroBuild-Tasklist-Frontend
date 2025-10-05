@@ -121,7 +121,7 @@ export default function TasksSection() {
         origin: { y: 0.7 }
       }
 
-      function fire(particleRatio: number, opts: any) {
+      const fire = (particleRatio: number, opts: any) => {
         confetti({
           ...defaults,
           ...opts,
