@@ -85,6 +85,13 @@ class ApiClient {
     })
   }
 
+  async moveCar(id: number, direction: 'up' | 'down') {
+    return this.request(`/cars/${id}/move`, {
+      method: 'PUT',
+      body: JSON.stringify({ direction }),
+    })
+  }
+
   // Tasks API
   async getTasks(filters?: { status?: string; car_id?: number }) {
     const params = new URLSearchParams()
@@ -93,6 +100,10 @@ class ApiClient {
 
     const query = params.toString() ? `?${params.toString()}` : ''
     return this.request(`/tasks${query}`)
+  }
+
+  async getPriorityTasks() {
+    return this.request('/tasks/priority/list')
   }
 
   async getTask(id: number) {
@@ -252,6 +263,22 @@ class ApiClient {
     return this.request('/punches/reset-hours', {
       method: 'POST',
     })
+  }
+
+  async updateCarSessionHours(sessionId: number, total_hours: number, password: string) {
+    return this.request(`/punches/car-sessions/${sessionId}/edit`, {
+      method: 'PUT',
+      body: JSON.stringify({ total_hours, password }),
+    })
+  }
+
+  async getMechanicSessions(mechanic_name: string, start_date?: string, end_date?: string) {
+    const params = new URLSearchParams()
+    if (start_date) params.append('start_date', start_date)
+    if (end_date) params.append('end_date', end_date)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches/summary/mechanic-sessions/${mechanic_name}${query}`)
   }
 }
 
