@@ -1,23 +1,58 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'
 
+// Helper para esperar
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 class ApiClient {
-  private async request(endpoint: string, options: RequestInit = {}) {
-    const url = `${API_URL}${endpoint}`
+  private async requestWithRetry(endpoint: string, options: RequestInit = {}, retries = 3): Promise<any> {
+    const delays = [5000, 10000, 15000] // 5s, 10s, 15s entre reintentos
 
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    })
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const url = `${API_URL}${endpoint}`
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
-      throw new Error(error.message || error.error || 'Request failed')
+        // Timeout de 60 segundos para el primer intento (Render cold start)
+        const timeout = i === 0 ? 60000 : 30000
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+        const response = await fetch(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+          ...options,
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+          throw new Error(error.message || error.error || 'Request failed')
+        }
+
+        return response.json()
+      } catch (error: any) {
+        const isLastAttempt = i === retries
+
+        // Si es timeout o error de red y no es el último intento, reintenta
+        if (!isLastAttempt && (error.name === 'AbortError' || error.message?.includes('fetch'))) {
+          console.log(`Intento ${i + 1} falló, reintentando en ${delays[i] / 1000}s...`)
+          await sleep(delays[i])
+          continue
+        }
+
+        // Si llegamos aquí, es el último intento o un error que no se puede reintentar
+        throw error
+      }
     }
 
-    return response.json()
+    throw new Error('Max retries reached')
+  }
+
+  private async request(endpoint: string, options: RequestInit = {}) {
+    return this.requestWithRetry(endpoint, options, 3)
   }
 
   // Cars API
@@ -217,6 +252,22 @@ class ApiClient {
     return this.request('/punches/reset-hours', {
       method: 'POST',
     })
+  }
+
+  async updateCarSessionHours(sessionId: number, total_hours: number, password: string) {
+    return this.request(`/punches/car-sessions/${sessionId}/edit`, {
+      method: 'PUT',
+      body: JSON.stringify({ total_hours, password }),
+    })
+  }
+
+  async getMechanicSessions(mechanic_name: string, start_date?: string, end_date?: string) {
+    const params = new URLSearchParams()
+    if (start_date) params.append('start_date', start_date)
+    if (end_date) params.append('end_date', end_date)
+
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return this.request(`/punches/summary/mechanic-sessions/${mechanic_name}${query}`)
   }
 }
 

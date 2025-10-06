@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Clock, LogIn, LogOut, Car, Play, Square, Calendar, DollarSign, Wrench, Edit2 } from 'lucide-react'
+import { Clock, LogIn, LogOut, Car, Play, Square, Calendar, DollarSign, Wrench, Edit2, MoreVertical } from 'lucide-react'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
 
@@ -103,6 +103,11 @@ export default function PunchesTab() {
   const [punchesOffset, setPunchesOffset] = useState(0)
   const [totalPunches, setTotalPunches] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [showEditSummaryModal, setShowEditSummaryModal] = useState(false)
+  const [editingSummary, setEditingSummary] = useState<MechanicSummary | null>(null)
+  const [editSummaryPassword, setEditSummaryPassword] = useState('')
+  const [editSummaryError, setEditSummaryError] = useState('')
+  const [editingCarHours, setEditingCarHours] = useState<{ car_id: number; hours: number; minutes: number; session_id?: number }[]>([])
 
   useEffect(() => {
     // Try to load clock offset from localStorage
@@ -611,6 +616,101 @@ export default function PunchesTab() {
     setEditError('')
   }
 
+  const handleEditSummary = async (mechanic: MechanicSummary) => {
+    try {
+      // Fetch individual sessions for this mechanic
+      const sessions = await api.getMechanicSessions(mechanic.mechanic_name)
+
+      // Group sessions by car and sum their hours
+      const carMap = new Map<number, { car_id: number; brand: string; model: string; year: number; hours: number; minutes: number; session_ids: number[] }>()
+
+      sessions.forEach((session: any) => {
+        const totalHours = session.total_hours || 0
+        const hours = Math.floor(totalHours)
+        const minutes = Math.round((totalHours - hours) * 60)
+
+        if (carMap.has(session.car_id)) {
+          const existing = carMap.get(session.car_id)!
+          const totalMinutes = (existing.hours * 60 + existing.minutes) + (hours * 60 + minutes)
+          existing.hours = Math.floor(totalMinutes / 60)
+          existing.minutes = totalMinutes % 60
+          existing.session_ids.push(session.id)
+        } else {
+          carMap.set(session.car_id, {
+            car_id: session.car_id,
+            brand: session.brand,
+            model: session.model,
+            year: session.year,
+            hours,
+            minutes,
+            session_ids: [session.id]
+          })
+        }
+      })
+
+      const carHoursArray = Array.from(carMap.values()).map(car => ({
+        car_id: car.car_id,
+        hours: car.hours,
+        minutes: car.minutes,
+        session_id: car.session_ids[0] // We'll use the first session ID to update
+      }))
+
+      setEditingSummary(mechanic)
+      setEditingCarHours(carHoursArray)
+      setEditSummaryPassword('')
+      setEditSummaryError('')
+      setShowEditSummaryModal(true)
+    } catch (error: any) {
+      alert('Error al cargar las sesiones: ' + (error.message || 'Error desconocido'))
+    }
+  }
+
+  const updateEditingCarHour = (index: number, field: 'hours' | 'minutes', value: number) => {
+    const updated = [...editingCarHours]
+    updated[index] = { ...updated[index], [field]: value }
+    setEditingCarHours(updated)
+  }
+
+  const handleSubmitSummaryEdit = async () => {
+    if (!editingSummary) return
+
+    setEditSummaryError('')
+
+    if (!editSummaryPassword) {
+      setEditSummaryError('La contraseña es requerida')
+      return
+    }
+
+    try {
+      // Update each car session
+      for (const car of editingCarHours) {
+        if (car.session_id) {
+          const totalHours = car.hours + (car.minutes / 60)
+          await api.updateCarSessionHours(car.session_id, totalHours, editSummaryPassword)
+        }
+      }
+
+      // Reload data
+      await loadData(false)
+
+      // Close modal
+      setShowEditSummaryModal(false)
+      setEditingSummary(null)
+      setEditingCarHours([])
+      setEditSummaryPassword('')
+    } catch (error: any) {
+      setEditSummaryError(error.message || 'Error al actualizar el resumen')
+    }
+  }
+
+  const closeEditSummaryModal = () => {
+    setShowEditSummaryModal(false)
+    setEditingSummary(null)
+    setEditingCarHours([])
+    setEditSummaryPassword('')
+    setEditSummaryError('')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -802,6 +902,16 @@ export default function PunchesTab() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+                              handleEditSummary(mechanic)
+                            }}
+                            className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-all"
+                            title="Editar horas"
+                          >
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
                               handleResetMechanicHours(mechanic.mechanic_name)
                             }}
                             className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all"
@@ -815,7 +925,19 @@ export default function PunchesTab() {
                     {/* Expanded Car Details */}
                     {expandedMechanics.has(mechanic.mechanic_name) && mechanic.cars.length > 0 && (
                       <div className="bg-white p-4 border-t border-gray-200">
-                        <p className="text-sm font-semibold text-gray-600 mb-3">Desglose por carro:</p>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold text-gray-600">Desglose por carro:</p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditSummary(mechanic)
+                            }}
+                            className="p-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100 transition-all text-xs flex items-center gap-1"
+                          >
+                            <MoreVertical className="w-3 h-3" />
+                            Editar
+                          </button>
+                        </div>
                         <div className="space-y-2">
                           {mechanic.cars.map((car) => (
                             <div
@@ -1174,6 +1296,119 @@ export default function PunchesTab() {
                 <button
                   onClick={handleSubmitEdit}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Summary Modal */}
+      {showEditSummaryModal && editingSummary && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-purple-500 to-pink-600 p-6 text-white rounded-t-2xl">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <MoreVertical className="w-6 h-6" />
+                Editar Resumen de Horas
+              </h3>
+              <p className="text-purple-100 mt-1">
+                {mechanicAvatars[editingSummary.mechanic_name]} {editingSummary.mechanic_name}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {editSummaryError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+                  ⚠️ {editSummaryError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Contraseña de Administrador:
+                </label>
+                <input
+                  type="password"
+                  value={editSummaryPassword}
+                  onChange={(e) => setEditSummaryPassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="Ingresa la contraseña"
+                />
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-700 mb-3">Horas por carro:</h4>
+                <div className="space-y-4">
+                  {editingCarHours.map((car, index) => {
+                    const carInfo = cars.find(c => c.id === car.car_id)
+                    return (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Car className="w-4 h-4 text-purple-600" />
+                          <span className="font-medium text-gray-700">
+                            {carInfo ? `${carInfo.brand} ${carInfo.model} ${carInfo.year}` : 'Carro desconocido'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Horas:
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="999"
+                              value={car.hours}
+                              onChange={(e) => updateEditingCarHour(index, 'hours', Number(e.target.value))}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Minutos:
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="59"
+                              value={car.minutes}
+                              onChange={(e) => updateEditingCarHour(index, 'minutes', Number(e.target.value))}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-gray-600">Nuevo total acumulado:</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {(() => {
+                    const totalMinutes = editingCarHours.reduce((sum, car) => sum + (car.hours * 60 + car.minutes), 0)
+                    const hours = Math.floor(totalMinutes / 60)
+                    const minutes = totalMinutes % 60
+                    return `${hours}h ${minutes}m`
+                  })()}
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={closeEditSummaryModal}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmitSummaryEdit}
+                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 shadow-md hover:shadow-lg transition-all"
                 >
                   Guardar Cambios
                 </button>
