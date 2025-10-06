@@ -95,6 +95,10 @@ class ApiClient {
     return this.request(`/tasks${query}`)
   }
 
+  async getPriorityTasks() {
+    return this.request('/tasks/priority/list')
+  }
+
   async getTask(id: number) {
     return this.request(`/tasks/${id}`)
   }

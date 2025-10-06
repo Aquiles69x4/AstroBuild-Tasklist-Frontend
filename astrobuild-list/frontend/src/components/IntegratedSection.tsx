@@ -66,6 +66,7 @@ const mechanicAvatars: { [key: string]: string } = {
 export default function IntegratedSection() {
   const [cars, setCars] = useState<Car[]>([])
   const [tasks, setTasks] = useState<{ [carId: number]: Task[] }>({})
+  const [priorityTasks, setPriorityTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [showCarModal, setShowCarModal] = useState(false)
   const [editingCar, setEditingCar] = useState<Car | null>(null)
@@ -110,12 +111,14 @@ export default function IntegratedSection() {
       if (showLoadingSpinner) {
         setLoading(true)
       }
-      const [carsData, allTasks] = await Promise.all([
+      const [carsData, allTasks, priorityTasksData] = await Promise.all([
         api.getCars(),
-        api.getTasks()
+        api.getTasks(),
+        api.getPriorityTasks()
       ])
 
       setCars(carsData)
+      setPriorityTasks(priorityTasksData)
 
       // Group tasks by car_id
       const tasksByCarId: { [carId: number]: Task[] } = {}
@@ -350,6 +353,133 @@ export default function IntegratedSection() {
             </button>
           </div>
         </div>
+
+        {/* Priority Tasks Section */}
+        {priorityTasks.length > 0 && (
+          <div className="mb-8">
+            <div
+              className="car-card relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300"
+              style={{
+                animation: 'slideInUp 0.5s ease-out both'
+              }}
+            >
+              {/* Gradient Header - Red theme for urgent tasks */}
+              <div className="bg-gradient-to-r from-red-500 via-orange-500 to-pink-600 p-6 text-white relative">
+                <div className="absolute inset-0 bg-black/10"></div>
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 animate-pulse">
+                        <Flag className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold mb-1">
+                          🚩 Tareas Urgentes
+                        </h3>
+                        <p className="text-white/80 text-sm">
+                          {priorityTasks.length} {priorityTasks.length === 1 ? 'tarea prioritaria' : 'tareas prioritarias'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Priority Tasks List */}
+              <div className="bg-white rounded-t-3xl p-6 -mt-6 relative z-10">
+                <div className="space-y-3">
+                  {priorityTasks.map((task, taskIndex) => (
+                    <div
+                      key={task.id}
+                      className="task-item group p-4 rounded-2xl border border-l-4 border-l-red-500 bg-white hover:shadow-md hover:scale-[1.02] transition-all duration-200"
+                      style={{
+                        animation: `fadeInSlide 0.3s ease-out ${taskIndex * 0.05}s both`
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4 flex-1">
+                          <button
+                            onClick={() => handleToggleTaskStatus(task.id, task.status)}
+                            className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+                              task.status === 'completed'
+                                ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
+                                : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
+                            }`}
+                          >
+                            {task.status === 'completed' && <Check className="w-4 h-4" />}
+                          </button>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Flag className="w-4 h-4 text-red-600 fill-red-600" />
+                              <span className={`font-semibold ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                {task.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Car className="w-3 h-3" />
+                                <span className="font-medium">{task.brand} {task.model} {task.year}</span>
+                              </div>
+                              {task.assigned_mechanic && (
+                                <div className="flex items-center gap-1">
+                                  <span>{mechanicAvatars[task.assigned_mechanic]}</span>
+                                  <span>{task.assigned_mechanic}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-lg transition-all duration-200"
+                            title="Eliminar tarea"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                      {completingTaskMechanic[task.id] !== undefined && task.status !== 'completed' && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center space-x-3">
+                            <select
+                              value={completingTaskMechanic[task.id]}
+                              onChange={(e) => setCompletingTaskMechanic(prev => ({
+                                ...prev,
+                                [task.id]: e.target.value
+                              }))}
+                              className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                            >
+                              <option value="">Seleccionar mecánico...</option>
+                              {mechanics.map(mechanic => (
+                                <option key={mechanic} value={mechanic}>
+                                  {mechanicAvatars[mechanic]} {mechanic}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
+                              disabled={!completingTaskMechanic[task.id]}
+                              className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              ✓ Confirmar
+                            </button>
+                            <button
+                              onClick={() => handleCancelCompletion(task.id)}
+                              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-6">
           {cars.map((car, index) => {
