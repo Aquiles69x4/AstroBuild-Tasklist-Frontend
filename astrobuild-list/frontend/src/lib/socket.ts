@@ -9,16 +9,37 @@ class SocketClient {
   connect() {
     if (this.socket) return this.socket
 
-    this.socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000')
+    this.socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000', {
+      // Configuración para manejar cold starts de Render
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 15000,
+      timeout: 60000, // 60 segundos para conectar (Render cold start)
+      transports: ['websocket', 'polling'], // Intentar websocket primero, luego polling
+    })
 
     this.socket.on('connect', () => {
-      console.log('Connected to server')
+      console.log('✅ Connected to server')
       this.isConnected = true
     })
 
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from server')
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from server:', reason)
       this.isConnected = false
+    })
+
+    this.socket.on('connect_error', (error) => {
+      console.log('⚠️ Connection error, retrying...', error.message)
+    })
+
+    this.socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`🔄 Reconnection attempt ${attemptNumber}...`)
+    })
+
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log(`✅ Reconnected after ${attemptNumber} attempts`)
+      this.isConnected = true
     })
 
     return this.socket

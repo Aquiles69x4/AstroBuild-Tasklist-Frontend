@@ -158,7 +158,7 @@ export default function PunchesTab() {
       const today = new Date().toISOString().split('T')[0]
 
       const [punchesData, sessionsData, carsData, summaryData, leaderboardData] = await Promise.all([
-        api.getPunches({ date: today, limit: punchesLimit, offset: 0 }),
+        api.getPunches({ limit: punchesLimit, offset: 0 }), // Removed date filter to show all punches
         api.getCarWorkSessions({ date: today }),
         api.getCars(),
         api.getMechanicCarsSummary(),
@@ -198,10 +198,8 @@ export default function PunchesTab() {
   const loadMorePunches = async () => {
     try {
       setLoadingMore(true)
-      const today = new Date().toISOString().split('T')[0]
 
       const punchesData = await api.getPunches({
-        date: today,
         limit: punchesLimit,
         offset: punchesOffset
       })

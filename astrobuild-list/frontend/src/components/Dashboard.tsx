@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Car, Trophy, Clock } from 'lucide-react'
 import IntegratedSection from './IntegratedSection'
 import Leaderboard from './Leaderboard'
@@ -9,6 +9,27 @@ import SimpleButton from './SimpleButton'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('workshop')
+
+  // Keep-alive ping para mantener backend despierto (Render free tier)
+  useEffect(() => {
+    const keepAlive = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000'
+        await fetch(`${apiUrl}/api/health`, { method: 'GET' })
+        console.log('🔄 Keep-alive ping sent')
+      } catch (error) {
+        console.log('⚠️ Keep-alive ping failed:', error)
+      }
+    }
+
+    // Ping inicial
+    keepAlive()
+
+    // Ping cada 10 minutos (600000ms)
+    const interval = setInterval(keepAlive, 600000)
+
+    return () => clearInterval(interval)
+  }, [])
 
 
   const tabs = [

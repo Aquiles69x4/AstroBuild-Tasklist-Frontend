@@ -636,6 +636,40 @@ router.put('/:id/edit', async (req, res) => {
   }
 });
 
+// Delete all punches and car work sessions (admin function - for reset/cleanup)
+// MUST BE BEFORE /:id route
+router.delete('/delete-all', async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    // Verify password
+    if (password !== 'hola123') {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // Delete all car work sessions first (foreign key constraint)
+    const sessionsResult = await db.query('DELETE FROM car_work_sessions RETURNING id');
+    const punchesResult = await db.query('DELETE FROM punches RETURNING id');
+
+    // Reset all mechanics' last_reset_date
+    await db.query('UPDATE mechanics SET last_reset_date = CURRENT_TIMESTAMP');
+
+    // Emit socket event
+    if (global.io) {
+      global.io.emit('all-data-cleared');
+    }
+
+    res.json({
+      message: 'All punches and car work sessions deleted successfully',
+      deleted_sessions: sessionsResult.rows.length,
+      deleted_punches: punchesResult.rows.length
+    });
+  } catch (error) {
+    console.error('Error deleting all data:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Delete punch (admin function)
 router.delete('/:id', async (req, res) => {
   try {
