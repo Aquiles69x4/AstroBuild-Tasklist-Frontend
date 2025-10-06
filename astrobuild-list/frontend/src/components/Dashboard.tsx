@@ -34,8 +34,8 @@ export default function Dashboard() {
 
   const tabs = [
     { id: 'workshop', name: 'Taller', icon: Car },
-    { id: 'leaderboard', name: 'Leaderboard', icon: Trophy },
     { id: 'punches', name: 'Ponches', icon: Clock },
+    { id: 'leaderboard', name: 'Leaderboard', icon: Trophy },
   ]
 
 
@@ -79,7 +79,7 @@ export default function Dashboard() {
                         cursor: 'pointer',
                         fontSize: '14px',
                         fontWeight: '500',
-                        border: 'none',
+                        border: isActive ? '2px solid #2563eb' : '2px solid transparent',
                         borderRadius: '8px',
                         pointerEvents: 'auto',
                         zIndex: 9999,
@@ -91,12 +91,14 @@ export default function Dashboard() {
                         if (!isActive) {
                           e.currentTarget.style.backgroundColor = '#f1f5f9'
                           e.currentTarget.style.color = '#475569'
+                          e.currentTarget.style.border = '2px solid #cbd5e1'
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!isActive) {
                           e.currentTarget.style.backgroundColor = 'transparent'
                           e.currentTarget.style.color = '#64748b'
+                          e.currentTarget.style.border = '2px solid transparent'
                         }
                       }}
                     >

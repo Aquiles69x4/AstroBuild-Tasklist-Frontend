@@ -85,6 +85,13 @@ class ApiClient {
     })
   }
 
+  async moveCar(id: number, direction: 'up' | 'down') {
+    return this.request(`/cars/${id}/move`, {
+      method: 'PUT',
+      body: JSON.stringify({ direction }),
+    })
+  }
+
   // Tasks API
   async getTasks(filters?: { status?: string; car_id?: number }) {
     const params = new URLSearchParams()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap, Flag } from 'lucide-react'
+import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap, Flag, ChevronUp, ChevronDown } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
@@ -92,6 +92,7 @@ export default function IntegratedSection() {
     socketClient.on('car-added', handleUpdate)
     socketClient.on('car-updated', handleUpdate)
     socketClient.on('car-deleted', handleUpdate)
+    socketClient.on('car-moved', handleUpdate)
     socketClient.on('task-added', handleUpdate)
     socketClient.on('task-updated', handleUpdate)
     socketClient.on('task-deleted', handleUpdate)
@@ -100,6 +101,7 @@ export default function IntegratedSection() {
       socketClient.off('car-added', handleUpdate)
       socketClient.off('car-updated', handleUpdate)
       socketClient.off('car-deleted', handleUpdate)
+      socketClient.off('car-moved', handleUpdate)
       socketClient.off('task-added', handleUpdate)
       socketClient.off('task-updated', handleUpdate)
       socketClient.off('task-deleted', handleUpdate)
@@ -118,7 +120,15 @@ export default function IntegratedSection() {
       ])
 
       setCars(carsData)
-      setPriorityTasks(priorityTasksData)
+
+      // Order priority tasks by car order
+      const carOrderMap = new Map(carsData.map((car, index) => [car.id, index]))
+      const orderedPriorityTasks = priorityTasksData.sort((a: Task, b: Task) => {
+        const orderA = carOrderMap.get(a.car_id) ?? 999
+        const orderB = carOrderMap.get(b.car_id) ?? 999
+        return orderA - orderB
+      })
+      setPriorityTasks(orderedPriorityTasks)
 
       // Group tasks by car_id
       const tasksByCarId: { [carId: number]: Task[] } = {}
@@ -302,6 +312,15 @@ export default function IntegratedSection() {
     } catch (error) {
       console.error('Error saving car:', error)
       throw error
+    }
+  }
+
+  const handleMoveCar = async (carId: number, direction: 'up' | 'down') => {
+    try {
+      await api.moveCar(carId, direction)
+      // Socket will handle update via 'car-moved' event
+    } catch (error) {
+      console.error('Error moving car:', error)
     }
   }
 
@@ -491,7 +510,7 @@ export default function IntegratedSection() {
             return (
               <div
                 key={car.id}
-                className="car-card relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300"
+                className="car-card group relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300"
                 style={{
                   animation: `slideInUp 0.5s ease-out ${index * 0.1}s both`
                 }}
@@ -531,6 +550,22 @@ export default function IntegratedSection() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleMoveCar(car.id, 'up')}
+                          disabled={index === 0}
+                          className="opacity-0 group-hover:opacity-100 p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Mover arriba"
+                        >
+                          <ChevronUp className="w-4 h-4 text-white" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveCar(car.id, 'down')}
+                          disabled={index === cars.length - 1}
+                          className="opacity-0 group-hover:opacity-100 p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Mover abajo"
+                        >
+                          <ChevronDown className="w-4 h-4 text-white" />
+                        </button>
                         <button
                           onClick={() => setEditingCar(car)}
                           className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
