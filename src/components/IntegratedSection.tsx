@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap, Flag, ChevronUp, ChevronDown } from 'lucide-react'
+import { Car, Plus, Check, Clock, AlertCircle, Trash2, Edit3, Zap, Flag, ChevronUp, ChevronDown, Info } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { api } from '@/lib/api'
 import { socketClient } from '@/lib/socket'
@@ -75,11 +75,13 @@ export default function IntegratedSection() {
   const [showCarModal, setShowCarModal] = useState(false)
   const [editingCar, setEditingCar] = useState<Car | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState<{ [carId: number]: string }>({})
+  const [newTaskDescription, setNewTaskDescription] = useState<{ [carId: number]: string }>({})
   const [completingTaskMechanic, setCompletingTaskMechanic] = useState<{ [taskId: number]: string }>({})
   const [newTaskPoints, setNewTaskPoints] = useState<{ [carId: number]: number }>({})
   const [newTaskMechanic, setNewTaskMechanic] = useState<{ [carId: number]: string }>({})
   const [newTaskPriority, setNewTaskPriority] = useState<{ [carId: number]: boolean }>({})
   const [showNewTaskInput, setShowNewTaskInput] = useState<{ [carId: number]: boolean }>({})
+  const [showTaskDescription, setShowTaskDescription] = useState<{ [taskId: number]: boolean }>({})
 
   useEffect(() => {
     loadData(true) // Initial load with spinner
@@ -166,7 +168,7 @@ export default function IntegratedSection() {
         body: JSON.stringify({
           car_id: carId,
           title,
-          description: '',
+          description: newTaskDescription[carId]?.trim() || '',
           assigned_mechanic: newTaskMechanic[carId] || null,
           points: newTaskPoints[carId] || 1,
           is_priority: newTaskPriority[carId] ? 1 : 0
@@ -176,6 +178,7 @@ export default function IntegratedSection() {
       if (response.ok) {
         // Clear inputs
         setNewTaskTitle(prev => ({ ...prev, [carId]: '' }))
+        setNewTaskDescription(prev => ({ ...prev, [carId]: '' }))
         setNewTaskPoints(prev => ({ ...prev, [carId]: 1 }))
         setNewTaskMechanic(prev => ({ ...prev, [carId]: '' }))
         setNewTaskPriority(prev => ({ ...prev, [carId]: false }))
@@ -445,6 +448,15 @@ export default function IntegratedSection() {
                               <span className={`font-semibold ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                                 {task.title}
                               </span>
+                              {task.description && (
+                                <button
+                                  onClick={() => setShowTaskDescription(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                                  className="p-1 hover:bg-blue-100 rounded-full transition-all duration-200"
+                                  title="Ver descripción"
+                                >
+                                  <Info className="w-4 h-4 text-blue-600" />
+                                </button>
+                              )}
                             </div>
                             <div className="flex items-center gap-3 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
@@ -470,6 +482,20 @@ export default function IntegratedSection() {
                           </button>
                         </div>
                       </div>
+
+                      {/* Task Description Display */}
+                      {showTaskDescription[task.id] && task.description && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                          <div className="flex items-start gap-2">
+                            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-blue-900 mb-1">Información:</p>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{task.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {completingTaskMechanic[task.id] !== undefined && task.status !== 'completed' && (
                         <div className="mt-3 pt-3 border-t border-gray-200 relative">
                           <button
@@ -624,7 +650,15 @@ export default function IntegratedSection() {
                           onChange={(e) => setNewTaskTitle(prev => ({ ...prev, [car.id]: e.target.value }))}
                           placeholder="Ej: Cambiar aceite, Revisar frenos..."
                           className="w-full px-4 py-3 bg-white border-0 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 shadow-sm"
-                          onKeyPress={(e) => e.key === 'Enter' && handleAddTask(car.id)}
+                        />
+
+                        {/* Task description */}
+                        <textarea
+                          value={newTaskDescription[car.id] || ''}
+                          onChange={(e) => setNewTaskDescription(prev => ({ ...prev, [car.id]: e.target.value }))}
+                          placeholder="📝 Descripción o información adicional (opcional)..."
+                          rows={3}
+                          className="w-full px-4 py-3 bg-white border-0 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 shadow-sm resize-none"
                         />
 
                         {/* Two column layout for selects */}
@@ -740,6 +774,15 @@ export default function IntegratedSection() {
                                   }`}>
                                     {task.title}
                                   </p>
+                                  {task.description && (
+                                    <button
+                                      onClick={() => setShowTaskDescription(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                                      className="p-1 hover:bg-blue-100 rounded-full transition-all duration-200"
+                                      title="Ver descripción"
+                                    >
+                                      <Info className="w-4 h-4 text-blue-600" />
+                                    </button>
+                                  )}
                                   <div className="flex items-center space-x-1">
                                     <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
                                       {task.points} pts
@@ -754,9 +797,6 @@ export default function IntegratedSection() {
                                     </span>
                                   </div>
                                 )}
-                                {task.description && (
-                                  <p className="text-sm text-gray-500 mt-1">{task.description}</p>
-                                )}
                               </div>
                             </div>
                             <button
@@ -767,6 +807,19 @@ export default function IntegratedSection() {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
+
+                          {/* Task Description Display */}
+                          {showTaskDescription[task.id] && task.description && (
+                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                              <div className="flex items-start gap-2">
+                                <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-blue-900 mb-1">Información:</p>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{task.description}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Mechanic selection when completing task */}
                           {completingTaskMechanic[task.id] !== undefined && (
