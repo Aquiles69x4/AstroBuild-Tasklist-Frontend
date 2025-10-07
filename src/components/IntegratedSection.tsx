@@ -32,6 +32,10 @@ interface Task {
   created_at: string
   updated_at: string
   completed_at?: string
+  // Car properties (included in priority tasks from backend)
+  brand?: string
+  model?: string
+  year?: number
 }
 
 const gradients = [
@@ -122,10 +126,10 @@ export default function IntegratedSection() {
       setCars(carsData)
 
       // Order priority tasks by car order
-      const carOrderMap = new Map(carsData.map((car: Car, index: number) => [car.id, index]))
+      const carOrderMap = new Map<number, number>(carsData.map((car: Car, index: number) => [car.id, index]))
       const orderedPriorityTasks = priorityTasksData.sort((a: Task, b: Task) => {
-        const orderA: number = carOrderMap.get(a.car_id) ?? 999
-        const orderB: number = carOrderMap.get(b.car_id) ?? 999
+        const orderA = carOrderMap.get(a.car_id) ?? 999
+        const orderB = carOrderMap.get(b.car_id) ?? 999
         return orderA - orderB
       })
       setPriorityTasks(orderedPriorityTasks)

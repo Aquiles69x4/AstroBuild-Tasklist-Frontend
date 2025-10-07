@@ -503,7 +503,7 @@ export default function PunchesTab() {
             mechanic_name: mechanicName,
             car_id: cars[0].id
           })
-          const activeSession = sessions.find(s => s.punch_id === punchId && !s.end_time)
+          const activeSession = sessions.find((s: any) => s.punch_id === punchId && !s.end_time)
           if (activeSession) {
             await api.endCarSession(activeSession.id)
           }
@@ -1293,7 +1293,7 @@ export default function PunchesTab() {
                 <>
                   {todayPunches.map((punch, index) => {
                     // Check if this is a payment record (very low hours)
-                    const isPayment = punch.total_hours !== null && punch.total_hours < 0.01
+                    const isPayment = punch.total_hours !== null && punch.total_hours !== undefined && punch.total_hours < 0.01
 
                     // Get payment info from car work session notes
                     let paymentHours = ''
