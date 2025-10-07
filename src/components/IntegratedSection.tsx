@@ -124,8 +124,8 @@ export default function IntegratedSection() {
       // Order priority tasks by car order
       const carOrderMap = new Map(carsData.map((car: Car, index: number) => [car.id, index]))
       const orderedPriorityTasks = priorityTasksData.sort((a: Task, b: Task) => {
-        const orderA = carOrderMap.get(a.car_id) ?? 999
-        const orderB = carOrderMap.get(b.car_id) ?? 999
+        const orderA: number = carOrderMap.get(a.car_id) ?? 999
+        const orderB: number = carOrderMap.get(b.car_id) ?? 999
         return orderA - orderB
       })
       setPriorityTasks(orderedPriorityTasks)
