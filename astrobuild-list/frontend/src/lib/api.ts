@@ -265,6 +265,20 @@ class ApiClient {
     })
   }
 
+  async resetCarHours(password: string) {
+    return this.request('/punches/reset-car-hours', {
+      method: 'POST',
+      body: JSON.stringify({ password })
+    })
+  }
+
+  async updateCarHours(car_id: number, total_hours: number, password: string) {
+    return this.request(`/punches/car-hours/${car_id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ total_hours, password })
+    })
+  }
+
   async updateCarSessionHours(sessionId: number, total_hours: number, password: string) {
     return this.request(`/punches/car-sessions/${sessionId}/edit`, {
       method: 'PUT',

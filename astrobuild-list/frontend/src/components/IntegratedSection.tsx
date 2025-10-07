@@ -364,7 +364,11 @@ export default function IntegratedSection() {
               Carros:
             </h2>
             <button
-              onClick={() => setShowCarModal(true)}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowCarModal(true)
+              }}
               className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 transition-all duration-200 shadow-lg"
             >
               <Plus className="w-5 h-5" />
@@ -418,12 +422,16 @@ export default function IntegratedSection() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4 flex-1">
                           <button
-                            onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                            className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+                            onPointerDown={(e) => {
+                              e.preventDefault()
+                              handleToggleTaskStatus(task.id, task.status)
+                            }}
+                            className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 touch-none ${
                               task.status === 'completed'
                                 ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                 : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                             }`}
+                            style={{ touchAction: 'none' }}
                           >
                             {task.status === 'completed' && <Check className="w-4 h-4" />}
                           </button>
@@ -459,8 +467,17 @@ export default function IntegratedSection() {
                         </div>
                       </div>
                       {completingTaskMechanic[task.id] !== undefined && task.status !== 'completed' && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="flex items-center space-x-3">
+                        <div className="mt-3 pt-3 border-t border-gray-200 relative">
+                          <button
+                            onClick={() => handleCancelCompletion(task.id)}
+                            className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                            title="Cancelar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          <div className="flex items-center space-x-2">
                             <select
                               value={completingTaskMechanic[task.id]}
                               onChange={(e) => setCompletingTaskMechanic(prev => ({
@@ -479,15 +496,9 @@ export default function IntegratedSection() {
                             <button
                               onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
                               disabled={!completingTaskMechanic[task.id]}
-                              className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                             >
                               ✓ Confirmar
-                            </button>
-                            <button
-                              onClick={() => handleCancelCompletion(task.id)}
-                              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"
-                            >
-                              ✕
                             </button>
                           </div>
                         </div>
@@ -702,12 +713,16 @@ export default function IntegratedSection() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4 flex-1">
                               <button
-                                onClick={() => handleToggleTaskStatus(task.id, task.status)}
-                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+                                onPointerDown={(e) => {
+                                  e.preventDefault()
+                                  handleToggleTaskStatus(task.id, task.status)
+                                }}
+                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 touch-none ${
                                   task.status === 'completed'
                                     ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                     : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                                 }`}
+                                style={{ touchAction: 'none' }}
                               >
                                 {task.status === 'completed' && <Check className="w-4 h-4" />}
                               </button>
@@ -751,17 +766,27 @@ export default function IntegratedSection() {
 
                           {/* Mechanic selection when completing task */}
                           {completingTaskMechanic[task.id] !== undefined && (
-                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl relative">
+                              <button
+                                onClick={() => handleCancelCompletion(task.id)}
+                                className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                                title="Cancelar"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+
                               <div className="flex items-center space-x-2 mb-3">
                                 <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                                   <Check className="w-4 h-4 text-white" />
                                 </div>
-                                <span className="font-medium text-blue-800">
+                                <span className="font-medium text-blue-800 text-sm">
                                   ¿Qué mecánico completó esta tarea?
                                 </span>
                               </div>
 
-                              <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2">
                                 <select
                                   value={completingTaskMechanic[task.id] || ''}
                                   onChange={(e) => setCompletingTaskMechanic(prev => ({
@@ -780,16 +805,10 @@ export default function IntegratedSection() {
 
                                 <button
                                   onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
-                                  className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
+                                  disabled={!completingTaskMechanic[task.id]}
+                                  className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                                 >
-                                  ✅ Completar
-                                </button>
-
-                                <button
-                                  onClick={() => handleCancelCompletion(task.id)}
-                                  className="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-400 transition-colors"
-                                >
-                                  ❌ Cancelar
+                                  ✓ Confirmar
                                 </button>
                               </div>
                             </div>
