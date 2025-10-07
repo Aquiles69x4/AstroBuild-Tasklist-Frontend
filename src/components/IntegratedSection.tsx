@@ -474,23 +474,23 @@ export default function IntegratedSection() {
                         <div className="mt-3 pt-3 border-t border-gray-200 relative">
                           <button
                             onClick={() => handleCancelCompletion(task.id)}
-                            className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                            className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all z-10"
                             title="Cancelar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-2">
                             <select
                               value={completingTaskMechanic[task.id]}
                               onChange={(e) => setCompletingTaskMechanic(prev => ({
                                 ...prev,
                                 [task.id]: e.target.value
                               }))}
-                              className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                              className="flex-1 min-w-0 px-2 md:px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-green-500"
                             >
-                              <option value="">Seleccionar mecánico...</option>
+                              <option value="">Seleccionar...</option>
                               {mechanics.map(mechanic => (
                                 <option key={mechanic} value={mechanic}>
                                   {mechanicAvatars[mechanic]} {mechanic}
@@ -500,9 +500,9 @@ export default function IntegratedSection() {
                             <button
                               onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
                               disabled={!completingTaskMechanic[task.id]}
-                              className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                              className="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg text-xs md:text-sm font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
                             >
-                              ✓ Confirmar
+                              ✓ OK
                             </button>
                           </div>
                         </div>
@@ -534,66 +534,66 @@ export default function IntegratedSection() {
                 <div className={`bg-gradient-to-r ${gradient} p-6 text-white relative`}>
                   <div className="absolute inset-0 bg-black/10"></div>
                   <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300">
-                          <Car className="w-6 h-6 text-white" />
+                    <div className="flex items-start justify-between gap-2 mb-4">
+                      <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 flex-shrink-0">
+                          <Car className="w-5 h-5 md:w-6 md:h-6 text-white" />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold mb-1">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base md:text-xl font-bold mb-1 truncate">
                             {car.brand} {car.model} {car.year}
                           </h3>
-                          <p className="text-white/80 text-sm mb-3">
+                          <p className="text-white/80 text-xs md:text-sm mb-2 md:mb-3 truncate">
                             {car.repair_time && `⏱️ ${car.repair_time}`}
                             {car.start_date && ` • 📅 ${new Date(car.start_date).toLocaleDateString()}`}
                           </p>
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
-                              <span className="text-xs font-semibold">
+                          <div className="flex items-center space-x-2 md:space-x-3 flex-wrap gap-1">
+                            <div className="bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 rounded-full">
+                              <span className="text-xs font-semibold whitespace-nowrap">
                                 {car.status === 'pending' ? '⏳ Pendiente' :
-                                 car.status === 'in_progress' ? '🔧 En Progreso' :
-                                 car.status === 'completed' ? '✅ Completado' : '🎉 Entregado'}
+                                 car.status === 'in_progress' ? '🔧 Progreso' :
+                                 car.status === 'completed' ? '✅ Listo' : '🎉 Entregado'}
                               </span>
                             </div>
                             {totalTasks > 0 && (
-                              <div className="flex items-center space-x-2 text-sm animate-pulse">
-                                <Zap className="w-4 h-4 animate-bounce" />
-                                <span className="font-semibold">{completedTasks}/{totalTasks}</span>
+                              <div className="flex items-center space-x-1 text-xs md:text-sm animate-pulse">
+                                <Zap className="w-3 h-3 md:w-4 md:h-4 animate-bounce" />
+                                <span className="font-semibold whitespace-nowrap">{completedTasks}/{totalTasks}</span>
                               </div>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
                         <button
                           onClick={() => handleMoveCar(car.id, 'up')}
                           disabled={index === 0}
-                          className="opacity-0 group-hover:opacity-100 p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="opacity-0 group-hover:opacity-100 p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Mover arriba"
                         >
-                          <ChevronUp className="w-4 h-4 text-white" />
+                          <ChevronUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                         </button>
                         <button
                           onClick={() => handleMoveCar(car.id, 'down')}
                           disabled={index === cars.length - 1}
-                          className="opacity-0 group-hover:opacity-100 p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="opacity-0 group-hover:opacity-100 p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Mover abajo"
                         >
-                          <ChevronDown className="w-4 h-4 text-white" />
+                          <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                         </button>
                         <button
                           onClick={() => setEditingCar(car)}
-                          className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
+                          className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
                           title="Editar vehículo"
                         >
-                          <Edit3 className="w-4 h-4 text-white" />
+                          <Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                         </button>
                         <button
                           onClick={() => handleDeleteCar(car.id)}
-                          className="p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-red-500/30 hover:scale-110 transition-all duration-200"
+                          className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-red-500/30 hover:scale-110 transition-all duration-200"
                           title="Eliminar vehículo"
                         >
-                          <Trash2 className="w-4 h-4 text-white" />
+                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                         </button>
                       </div>
                     </div>
@@ -770,10 +770,10 @@ export default function IntegratedSection() {
 
                           {/* Mechanic selection when completing task */}
                           {completingTaskMechanic[task.id] !== undefined && (
-                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl relative">
+                            <div className="mt-4 p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-xl relative">
                               <button
                                 onClick={() => handleCancelCompletion(task.id)}
-                                className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                                className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all z-10"
                                 title="Cancelar"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -782,24 +782,24 @@ export default function IntegratedSection() {
                               </button>
 
                               <div className="flex items-center space-x-2 mb-3">
-                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                  <Check className="w-4 h-4 text-white" />
+                                <div className="w-5 h-5 md:w-6 md:h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <Check className="w-3 h-3 md:w-4 md:h-4 text-white" />
                                 </div>
-                                <span className="font-medium text-blue-800 text-sm">
+                                <span className="font-medium text-blue-800 text-xs md:text-sm">
                                   ¿Qué mecánico completó esta tarea?
                                 </span>
                               </div>
 
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center gap-2">
                                 <select
                                   value={completingTaskMechanic[task.id] || ''}
                                   onChange={(e) => setCompletingTaskMechanic(prev => ({
                                     ...prev,
                                     [task.id]: e.target.value
                                   }))}
-                                  className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                  className="flex-1 min-w-0 px-2 md:px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-blue-500"
                                 >
-                                  <option value="">Seleccionar mecánico...</option>
+                                  <option value="">Seleccionar...</option>
                                   {mechanics.map(mechanic => (
                                     <option key={mechanic} value={mechanic}>
                                       {mechanicAvatars[mechanic]} {mechanic}
@@ -810,9 +810,9 @@ export default function IntegratedSection() {
                                 <button
                                   onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
                                   disabled={!completingTaskMechanic[task.id]}
-                                  className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                  className="px-3 md:px-4 py-2 bg-green-500 text-white text-xs md:text-sm font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
                                 >
-                                  ✓ Confirmar
+                                  ✓ OK
                                 </button>
                               </div>
                             </div>

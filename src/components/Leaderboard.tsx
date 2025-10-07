@@ -192,42 +192,42 @@ export default function Leaderboard() {
                 >
                   <div className={`bg-gradient-to-r ${gradient} p-1`}>
                     <div className="bg-white rounded-xl p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
                           {/* Rank */}
-                          <div className={`w-12 h-12 bg-gradient-to-r ${gradient} rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg hover:scale-110 transition-transform duration-300`}>
+                          <div className={`w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r ${gradient} rounded-2xl flex items-center justify-center text-white font-bold text-sm md:text-lg shadow-lg hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
                             #{mechanic.rank}
                           </div>
 
                           {/* Avatar */}
-                          <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center text-2xl hover:scale-110 transition-transform duration-300">
+                          <div className="w-10 h-10 md:w-14 md:h-14 bg-gray-100 rounded-2xl flex items-center justify-center text-xl md:text-2xl hover:scale-110 transition-transform duration-300 flex-shrink-0">
                             {mechanicAvatars[mechanic.name] || '👤'}
                           </div>
 
                           {/* Info */}
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <h4 className="font-bold text-gray-900 text-lg">{mechanic.name}</h4>
-                              {mechanic.medal && <span className="text-2xl animate-bounce">{mechanic.medal}</span>}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-1 md:space-x-2 mb-1">
+                              <h4 className="font-bold text-gray-900 text-sm md:text-lg truncate">{mechanic.name}</h4>
+                              {mechanic.medal && <span className="text-lg md:text-2xl animate-bounce flex-shrink-0">{mechanic.medal}</span>}
                             </div>
-                            <p className="text-sm text-gray-500">
-                              {mechanic.total_tasks} tareas completadas
+                            <p className="text-xs md:text-sm text-gray-500 truncate">
+                              {mechanic.total_tasks} tareas
                             </p>
                           </div>
                         </div>
 
                         {/* Points */}
-                        <div className="text-right flex items-center gap-2">
-                          <div>
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Star className="w-5 h-5 text-yellow-500 hover:rotate-180 transition-transform duration-500" />
-                              <span className="text-2xl font-bold text-gray-900">{mechanic.total_points}</span>
+                        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                          <div className="text-right">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-500 hover:rotate-180 transition-transform duration-500 flex-shrink-0" />
+                              <span className="text-lg md:text-2xl font-bold text-gray-900 whitespace-nowrap">{mechanic.total_points}</span>
                             </div>
-                            <p className="text-sm text-gray-500">puntos</p>
+                            <p className="text-xs md:text-sm text-gray-500">pts</p>
                           </div>
                           <button
                             onClick={() => handleEditPoints(mechanic)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all flex-shrink-0"
                             title="Editar puntos"
                           >
                             <MoreVertical className="w-4 h-4" />
