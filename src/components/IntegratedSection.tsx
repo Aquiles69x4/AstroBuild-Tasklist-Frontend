@@ -371,13 +371,15 @@ export default function IntegratedSection() {
               Carros:
             </h2>
             <button
-              onPointerDown={(e) => {
+              onTouchStart={(e) => {
                 e.preventDefault()
-                e.stopPropagation()
                 setShowCarModal(true)
               }}
-              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 transition-all duration-200 shadow-lg touch-none active:scale-95"
-              style={{ touchAction: 'none' }}
+              onClick={(e) => {
+                e.preventDefault()
+                setShowCarModal(true)
+              }}
+              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 active:bg-gray-700 transition-all duration-200 shadow-lg active:scale-95 cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               <span>Nuevo Vehículo</span>
@@ -498,26 +500,36 @@ export default function IntegratedSection() {
                       )}
 
                       {completingTaskMechanic[task.id] !== undefined && task.status !== 'completed' && (
-                        <div className="mt-3 pt-3 border-t border-gray-200 relative">
+                        <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl relative shadow-lg animate-pulse">
                           <button
                             onClick={() => handleCancelCompletion(task.id)}
-                            className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all z-10"
+                            className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-all z-10 shadow-md"
                             title="Cancelar"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
+
+                          <div className="mb-3 flex items-center gap-2">
+                            <div className="text-2xl animate-bounce">👇</div>
+                            <div className="flex-1">
+                              <p className="font-bold text-green-800 text-sm md:text-base">¡Selecciona quién completó esta tarea!</p>
+                              <p className="text-xs text-green-600">Elige un mecánico de la lista</p>
+                            </div>
+                          </div>
+
                           <div className="flex items-center gap-2">
+                            <div className="text-xl">🔧</div>
                             <select
                               value={completingTaskMechanic[task.id]}
                               onChange={(e) => setCompletingTaskMechanic(prev => ({
                                 ...prev,
                                 [task.id]: e.target.value
                               }))}
-                              className="flex-1 min-w-0 px-2 md:px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-green-500"
+                              className="flex-1 min-w-0 px-3 py-3 bg-white border-2 border-green-400 rounded-lg text-sm md:text-base font-semibold focus:ring-4 focus:ring-green-300 focus:border-green-500 shadow-sm"
                             >
-                              <option value="">Seleccionar...</option>
+                              <option value="">👉 Seleccionar mecánico...</option>
                               {mechanics.map(mechanic => (
                                 <option key={mechanic} value={mechanic}>
                                   {mechanicAvatars[mechanic]} {mechanic}
@@ -527,9 +539,9 @@ export default function IntegratedSection() {
                             <button
                               onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
                               disabled={!completingTaskMechanic[task.id]}
-                              className="px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg text-xs md:text-sm font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
+                              className="px-4 md:px-6 py-3 bg-green-500 text-white rounded-xl text-sm md:text-base font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 shadow-md hover:shadow-lg transition-all active:scale-95"
                             >
-                              ✓ OK
+                              ✓ Completar
                             </button>
                           </div>
                         </div>
@@ -824,10 +836,10 @@ export default function IntegratedSection() {
 
                           {/* Mechanic selection when completing task */}
                           {completingTaskMechanic[task.id] !== undefined && (
-                            <div className="mt-4 p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-xl relative">
+                            <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl relative shadow-lg animate-pulse">
                               <button
                                 onClick={() => handleCancelCompletion(task.id)}
-                                className="absolute -top-1 -right-1 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all z-10"
+                                className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-all z-10 shadow-md"
                                 title="Cancelar"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -835,25 +847,25 @@ export default function IntegratedSection() {
                                 </svg>
                               </button>
 
-                              <div className="flex items-center space-x-2 mb-3">
-                                <div className="w-5 h-5 md:w-6 md:h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <Check className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                              <div className="mb-3 flex items-center gap-2">
+                                <div className="text-2xl animate-bounce">👇</div>
+                                <div className="flex-1">
+                                  <p className="font-bold text-green-800 text-sm md:text-base">¡Selecciona quién completó esta tarea!</p>
+                                  <p className="text-xs text-green-600">Elige un mecánico de la lista</p>
                                 </div>
-                                <span className="font-medium text-blue-800 text-xs md:text-sm">
-                                  ¿Qué mecánico completó esta tarea?
-                                </span>
                               </div>
 
                               <div className="flex items-center gap-2">
+                                <div className="text-xl">🔧</div>
                                 <select
                                   value={completingTaskMechanic[task.id] || ''}
                                   onChange={(e) => setCompletingTaskMechanic(prev => ({
                                     ...prev,
                                     [task.id]: e.target.value
                                   }))}
-                                  className="flex-1 min-w-0 px-2 md:px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-blue-500"
+                                  className="flex-1 min-w-0 px-3 py-3 bg-white border-2 border-green-400 rounded-lg text-sm md:text-base font-semibold focus:ring-4 focus:ring-green-300 focus:border-green-500 shadow-sm"
                                 >
-                                  <option value="">Seleccionar...</option>
+                                  <option value="">👉 Seleccionar mecánico...</option>
                                   {mechanics.map(mechanic => (
                                     <option key={mechanic} value={mechanic}>
                                       {mechanicAvatars[mechanic]} {mechanic}
@@ -864,9 +876,9 @@ export default function IntegratedSection() {
                                 <button
                                   onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
                                   disabled={!completingTaskMechanic[task.id]}
-                                  className="px-3 md:px-4 py-2 bg-green-500 text-white text-xs md:text-sm font-medium rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
+                                  className="px-4 md:px-6 py-3 bg-green-500 text-white rounded-xl text-sm md:text-base font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 shadow-md hover:shadow-lg transition-all active:scale-95"
                                 >
-                                  ✓ OK
+                                  ✓ Completar
                                 </button>
                               </div>
                             </div>
@@ -896,13 +908,15 @@ export default function IntegratedSection() {
               <h3 className="text-2xl font-bold text-gray-900 mb-3">¡Bienvenido al Taller!</h3>
               <p className="text-gray-600 mb-8 text-lg">Comienza registrando tu primer vehículo</p>
               <button
-                onPointerDown={(e) => {
+                onTouchStart={(e) => {
                   e.preventDefault()
-                  e.stopPropagation()
                   setShowCarModal(true)
                 }}
-                className="bg-black text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-all duration-200 shadow-lg flex items-center space-x-3 mx-auto touch-none active:scale-95"
-                style={{ touchAction: 'none' }}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setShowCarModal(true)
+                }}
+                className="bg-black text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 active:bg-gray-700 transition-all duration-200 shadow-lg flex items-center space-x-3 mx-auto active:scale-95 cursor-pointer"
               >
                 <Plus className="w-6 h-6" />
                 <span>Registrar Primer Vehículo</span>
