@@ -375,7 +375,7 @@ export default function IntegratedSection() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <div className="mb-4 overflow-visible -ml-44 sm:-ml-60">
+          <div className="mb-4 overflow-visible -ml-44 sm:-ml-60 relative" style={{ zIndex: 1 }}>
             <img
               src="/images/logo-astrobuild.png"
               alt="ASTROBUILD Tareas"
@@ -385,10 +385,11 @@ export default function IntegratedSection() {
                 transform: 'scale(6)',
                 transformOrigin: 'left center',
                 filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))',
+                pointerEvents: 'none'
               }}
             />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative z-50 mb-6">
             <h2 className="text-3xl font-black text-gray-800 tracking-wide mt-4"
                 style={{
                   fontFamily: 'Anton, sans-serif',
@@ -400,7 +401,8 @@ export default function IntegratedSection() {
             <button
               type="button"
               onClick={() => setShowCarModal(true)}
-              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-lg active:scale-95 cursor-pointer select-none"
+              className="relative z-50 bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-xl active:scale-95 cursor-pointer select-none"
+              style={{ position: 'relative', zIndex: 9999 }}
             >
               <Plus className="w-5 h-5" />
               <span>Nuevo Vehículo</span>
