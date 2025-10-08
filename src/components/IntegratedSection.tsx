@@ -386,7 +386,9 @@ export default function IntegratedSection() {
                 transformOrigin: 'left center',
                 filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))',
                 pointerEvents: 'none',
-                imageRendering: 'crisp-edges'
+                imageRendering: '-webkit-optimize-contrast',
+                WebkitFontSmoothing: 'antialiased',
+                backfaceVisibility: 'hidden'
               }}
             />
           </div>
