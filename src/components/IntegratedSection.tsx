@@ -76,7 +76,8 @@ export default function IntegratedSection() {
   const [editingCar, setEditingCar] = useState<Car | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState<{ [carId: number]: string }>({})
   const [newTaskDescription, setNewTaskDescription] = useState<{ [carId: number]: string }>({})
-  const [completingTaskMechanic, setCompletingTaskMechanic] = useState<{ [taskId: number]: string }>({})
+  const [completingPriorityTaskMechanic, setCompletingPriorityTaskMechanic] = useState<{ [taskId: number]: string }>({})
+  const [completingRegularTaskMechanic, setCompletingRegularTaskMechanic] = useState<{ [taskId: number]: string }>({})
   const [newTaskPoints, setNewTaskPoints] = useState<{ [carId: number]: number }>({})
   const [newTaskMechanic, setNewTaskMechanic] = useState<{ [carId: number]: string }>({})
   const [newTaskPriority, setNewTaskPriority] = useState<{ [carId: number]: boolean }>({})
@@ -190,28 +191,39 @@ export default function IntegratedSection() {
     }
   }
 
-  const handleToggleTaskStatus = async (taskId: number, currentStatus: string) => {
-    // If marking as completed, show mechanic selector first
+  const handleTogglePriorityTaskStatus = async (taskId: number, currentStatus: string) => {
     if (currentStatus !== 'completed') {
-      setCompletingTaskMechanic(prev => ({ ...prev, [taskId]: '' }))
+      setCompletingPriorityTaskMechanic(prev => ({ ...prev, [taskId]: '' }))
       return
     }
-
-    // If unmarking completed, just toggle back to pending
     const newStatus = 'pending'
-
     try {
       await api.updateTask(taskId, {
         status: newStatus,
         assigned_mechanic: null
       })
-      // Socket will handle update via 'task-updated' event
     } catch (error) {
       console.error('Error updating task:', error)
     }
   }
 
-  const handleCompleteTask = async (taskId: number, mechanic: string) => {
+  const handleToggleRegularTaskStatus = async (taskId: number, currentStatus: string) => {
+    if (currentStatus !== 'completed') {
+      setCompletingRegularTaskMechanic(prev => ({ ...prev, [taskId]: '' }))
+      return
+    }
+    const newStatus = 'pending'
+    try {
+      await api.updateTask(taskId, {
+        status: newStatus,
+        assigned_mechanic: null
+      })
+    } catch (error) {
+      console.error('Error updating task:', error)
+    }
+  }
+
+  const handleCompleteTask = async (taskId: number, mechanic: string, isPriority: boolean = false) => {
     if (!mechanic) {
       alert('Por favor selecciona un mecánico')
       return
@@ -264,20 +276,35 @@ export default function IntegratedSection() {
         assigned_mechanic: mechanic
       })
 
-      // Clear the mechanic selector
-      setCompletingTaskMechanic(prev => {
-        const updated = { ...prev }
-        delete updated[taskId]
-        return updated
-      })
-      // Socket will handle update via 'task-updated' event
+      // Clear the appropriate mechanic selector
+      if (isPriority) {
+        setCompletingPriorityTaskMechanic(prev => {
+          const updated = { ...prev }
+          delete updated[taskId]
+          return updated
+        })
+      } else {
+        setCompletingRegularTaskMechanic(prev => {
+          const updated = { ...prev }
+          delete updated[taskId]
+          return updated
+        })
+      }
     } catch (error) {
       console.error('Error completing task:', error)
     }
   }
 
-  const handleCancelCompletion = (taskId: number) => {
-    setCompletingTaskMechanic(prev => {
+  const handleCancelPriorityCompletion = (taskId: number) => {
+    setCompletingPriorityTaskMechanic(prev => {
+      const updated = { ...prev }
+      delete updated[taskId]
+      return updated
+    })
+  }
+
+  const handleCancelRegularCompletion = (taskId: number) => {
+    setCompletingRegularTaskMechanic(prev => {
       const updated = { ...prev }
       delete updated[taskId]
       return updated
@@ -371,8 +398,9 @@ export default function IntegratedSection() {
               Carros:
             </h2>
             <button
+              type="button"
               onClick={() => setShowCarModal(true)}
-              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-lg active:scale-95"
+              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-lg active:scale-95 cursor-pointer select-none"
             >
               <Plus className="w-5 h-5" />
               <span>Nuevo Vehículo</span>
@@ -425,16 +453,12 @@ export default function IntegratedSection() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4 flex-1">
                           <button
-                            onPointerDown={(e) => {
-                              e.preventDefault()
-                              handleToggleTaskStatus(task.id, task.status)
-                            }}
-                            className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 touch-none ${
+                            onClick={() => handleTogglePriorityTaskStatus(task.id, task.status)}
+                            className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
                               task.status === 'completed'
                                 ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                 : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                             }`}
-                            style={{ touchAction: 'none' }}
                           >
                             {task.status === 'completed' && <Check className="w-4 h-4" />}
                           </button>
@@ -492,10 +516,10 @@ export default function IntegratedSection() {
                         </div>
                       )}
 
-                      {completingTaskMechanic[task.id] !== undefined && task.status !== 'completed' && (
+                      {completingPriorityTaskMechanic[task.id] !== undefined && task.status !== 'completed' && (
                         <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl relative shadow-lg animate-pulse">
                           <button
-                            onClick={() => handleCancelCompletion(task.id)}
+                            onClick={() => handleCancelPriorityCompletion(task.id)}
                             className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-all z-10 shadow-md"
                             title="Cancelar"
                           >
@@ -515,8 +539,8 @@ export default function IntegratedSection() {
                           <div className="flex items-center gap-2">
                             <div className="text-xl">🔧</div>
                             <select
-                              value={completingTaskMechanic[task.id]}
-                              onChange={(e) => setCompletingTaskMechanic(prev => ({
+                              value={completingPriorityTaskMechanic[task.id]}
+                              onChange={(e) => setCompletingPriorityTaskMechanic(prev => ({
                                 ...prev,
                                 [task.id]: e.target.value
                               }))}
@@ -530,8 +554,8 @@ export default function IntegratedSection() {
                               ))}
                             </select>
                             <button
-                              onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
-                              disabled={!completingTaskMechanic[task.id]}
+                              onClick={() => handleCompleteTask(task.id, completingPriorityTaskMechanic[task.id], true)}
+                              disabled={!completingPriorityTaskMechanic[task.id]}
                               className="px-4 md:px-6 py-3 bg-green-500 text-white rounded-xl text-sm md:text-base font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 shadow-md hover:shadow-lg transition-all active:scale-95"
                             >
                               ✓ Completar
@@ -757,16 +781,12 @@ export default function IntegratedSection() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4 flex-1">
                               <button
-                                onPointerDown={(e) => {
-                                  e.preventDefault()
-                                  handleToggleTaskStatus(task.id, task.status)
-                                }}
-                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 touch-none ${
+                                onClick={() => handleToggleRegularTaskStatus(task.id, task.status)}
+                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
                                   task.status === 'completed'
                                     ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                     : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                                 }`}
-                                style={{ touchAction: 'none' }}
                               >
                                 {task.status === 'completed' && <Check className="w-4 h-4" />}
                               </button>
@@ -828,10 +848,10 @@ export default function IntegratedSection() {
                           )}
 
                           {/* Mechanic selection when completing task */}
-                          {completingTaskMechanic[task.id] !== undefined && (
+                          {completingRegularTaskMechanic[task.id] !== undefined && (
                             <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl relative shadow-lg animate-pulse">
                               <button
-                                onClick={() => handleCancelCompletion(task.id)}
+                                onClick={() => handleCancelRegularCompletion(task.id)}
                                 className="absolute -top-2 -right-2 p-1.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-full transition-all z-10 shadow-md"
                                 title="Cancelar"
                               >
@@ -851,8 +871,8 @@ export default function IntegratedSection() {
                               <div className="flex items-center gap-2">
                                 <div className="text-xl">🔧</div>
                                 <select
-                                  value={completingTaskMechanic[task.id] || ''}
-                                  onChange={(e) => setCompletingTaskMechanic(prev => ({
+                                  value={completingRegularTaskMechanic[task.id] || ''}
+                                  onChange={(e) => setCompletingRegularTaskMechanic(prev => ({
                                     ...prev,
                                     [task.id]: e.target.value
                                   }))}
@@ -867,8 +887,8 @@ export default function IntegratedSection() {
                                 </select>
 
                                 <button
-                                  onClick={() => handleCompleteTask(task.id, completingTaskMechanic[task.id])}
-                                  disabled={!completingTaskMechanic[task.id]}
+                                  onClick={() => handleCompleteTask(task.id, completingRegularTaskMechanic[task.id], false)}
+                                  disabled={!completingRegularTaskMechanic[task.id]}
                                   className="px-4 md:px-6 py-3 bg-green-500 text-white rounded-xl text-sm md:text-base font-bold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 shadow-md hover:shadow-lg transition-all active:scale-95"
                                 >
                                   ✓ Completar
@@ -901,8 +921,9 @@ export default function IntegratedSection() {
               <h3 className="text-2xl font-bold text-gray-900 mb-3">¡Bienvenido al Taller!</h3>
               <p className="text-gray-600 mb-8 text-lg">Comienza registrando tu primer vehículo</p>
               <button
+                type="button"
                 onClick={() => setShowCarModal(true)}
-                className="bg-black text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-lg flex items-center space-x-3 mx-auto active:scale-95"
+                className="bg-black text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 hover:scale-105 transition-all duration-200 shadow-lg flex items-center space-x-3 mx-auto active:scale-95 cursor-pointer select-none"
               >
                 <Plus className="w-6 h-6" />
                 <span>Registrar Primer Vehículo</span>
