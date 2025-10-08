@@ -375,7 +375,7 @@ export default function IntegratedSection() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <div className="mb-4 overflow-visible -ml-44 sm:-ml-60 relative" style={{ zIndex: 1 }}>
+          <div className="mb-4 overflow-visible -ml-44 sm:-ml-60">
             <img
               src="/images/logo-astrobuild.png"
               alt="ASTROBUILD Tareas"
@@ -384,11 +384,7 @@ export default function IntegratedSection() {
                 height: '80px',
                 transform: 'scale(6)',
                 transformOrigin: 'left center',
-                filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))',
-                pointerEvents: 'none',
-                imageRendering: '-webkit-optimize-contrast',
-                WebkitFontSmoothing: 'antialiased',
-                backfaceVisibility: 'hidden'
+                filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))'
               }}
             />
           </div>
