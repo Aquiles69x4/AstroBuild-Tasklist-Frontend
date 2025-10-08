@@ -371,12 +371,13 @@ export default function IntegratedSection() {
               Carros:
             </h2>
             <button
-              onClick={(e) => {
+              onPointerDown={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
                 setShowCarModal(true)
               }}
-              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 transition-all duration-200 shadow-lg"
+              className="bg-black text-white px-6 py-3 rounded-2xl flex items-center space-x-2 font-semibold hover:bg-gray-800 transition-all duration-200 shadow-lg touch-none active:scale-95"
+              style={{ touchAction: 'none' }}
             >
               <Plus className="w-5 h-5" />
               <span>Nuevo Vehículo</span>
@@ -895,8 +896,13 @@ export default function IntegratedSection() {
               <h3 className="text-2xl font-bold text-gray-900 mb-3">¡Bienvenido al Taller!</h3>
               <p className="text-gray-600 mb-8 text-lg">Comienza registrando tu primer vehículo</p>
               <button
-                onClick={() => setShowCarModal(true)}
-                className="bg-black text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-all duration-200 shadow-lg flex items-center space-x-3 mx-auto"
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowCarModal(true)
+                }}
+                className="bg-black text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-gray-800 transition-all duration-200 shadow-lg flex items-center space-x-3 mx-auto touch-none active:scale-95"
+                style={{ touchAction: 'none' }}
               >
                 <Plus className="w-6 h-6" />
                 <span>Registrar Primer Vehículo</span>
