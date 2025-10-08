@@ -455,13 +455,13 @@ export default function IntegratedSection() {
                         <div className="flex items-center space-x-4 flex-1">
                           <button
                             onClick={() => handleTogglePriorityTaskStatus(task.id, task.status)}
-                            className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+                            className={`flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
                               task.status === 'completed'
                                 ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                 : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                             }`}
                           >
-                            {task.status === 'completed' && <Check className="w-4 h-4" />}
+                            {task.status === 'completed' && <Check className="w-5 h-5" />}
                           </button>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -663,7 +663,7 @@ export default function IntegratedSection() {
                     <h4 className="font-bold text-gray-900 text-lg">📝 Tareas</h4>
                     <button
                       onClick={() => setShowNewTaskInput(prev => ({ ...prev, [car.id]: !prev[car.id] }))}
-                      className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 flex items-center space-x-1 shadow-md hover:shadow-lg"
+                      className="bg-gray-900 text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 hover:scale-105 transition-all duration-200 flex items-center space-x-1 shadow-md hover:shadow-lg min-h-[44px]"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Nueva</span>
@@ -783,13 +783,13 @@ export default function IntegratedSection() {
                             <div className="flex items-center space-x-4 flex-1">
                               <button
                                 onClick={() => handleToggleRegularTaskStatus(task.id, task.status)}
-                                className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+                                className={`flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 ${
                                   task.status === 'completed'
                                     ? 'bg-green-500 border-green-500 text-white shadow-lg animate-pulse'
                                     : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                                 }`}
                               >
-                                {task.status === 'completed' && <Check className="w-4 h-4" />}
+                                {task.status === 'completed' && <Check className="w-5 h-5" />}
                               </button>
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
