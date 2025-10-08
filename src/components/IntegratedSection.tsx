@@ -385,7 +385,8 @@ export default function IntegratedSection() {
                 transform: 'scale(6)',
                 transformOrigin: 'left center',
                 filter: 'drop-shadow(8px 8px 16px rgba(0,0,0,0.4))',
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                imageRendering: 'crisp-edges'
               }}
             />
           </div>
@@ -473,14 +474,10 @@ export default function IntegratedSection() {
                               {task.description && (
                                 <button
                                   onClick={() => setShowTaskDescription(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                                  className="relative p-1.5 bg-blue-500 hover:bg-blue-600 rounded-full transition-all duration-200 shadow-md hover:shadow-lg animate-pulse hover:scale-110"
+                                  className="p-1.5 bg-blue-500 hover:bg-blue-600 rounded-full transition-all duration-200 shadow-md hover:shadow-lg animate-pulse hover:scale-110"
                                   title="Ver descripción"
                                 >
                                   <Info className="w-4 h-4 text-white" />
-                                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                                  </span>
                                 </button>
                               )}
                             </div>
@@ -602,7 +599,7 @@ export default function IntegratedSection() {
                           <Car className="w-5 h-5 md:w-6 md:h-6 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base md:text-xl font-bold mb-1 truncate">
+                          <h3 className="text-lg md:text-2xl font-bold mb-1 truncate">
                             {car.brand} {car.model} {car.year}
                           </h3>
                           <p className="text-white/80 text-xs md:text-sm mb-2 md:mb-3 truncate">
@@ -809,14 +806,10 @@ export default function IntegratedSection() {
                                   {task.description && (
                                     <button
                                       onClick={() => setShowTaskDescription(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
-                                      className="relative p-1.5 bg-blue-500 hover:bg-blue-600 rounded-full transition-all duration-200 shadow-md hover:shadow-lg animate-pulse hover:scale-110"
+                                      className="p-1.5 bg-blue-500 hover:bg-blue-600 rounded-full transition-all duration-200 shadow-md hover:shadow-lg animate-pulse hover:scale-110"
                                       title="Ver descripción"
                                     >
                                       <Info className="w-4 h-4 text-white" />
-                                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                                      </span>
                                     </button>
                                   )}
                                   <div className="flex items-center space-x-1">
