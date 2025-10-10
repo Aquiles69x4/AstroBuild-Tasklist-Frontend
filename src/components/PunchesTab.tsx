@@ -265,9 +265,15 @@ export default function PunchesTab() {
     }
   }
 
-  const playPunchSound = () => {
+  const playPunchSound = async () => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+
+      // Resume AudioContext for mobile browsers (iOS/Android require user interaction)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
+
       const oscillator = audioContext.createOscillator()
       const gainNode = audioContext.createGain()
 
@@ -347,37 +353,29 @@ export default function PunchesTab() {
       // Play punch sound
       playPunchSound()
 
-      // First create car work sessions for each distribution BEFORE punching out
+      // Create all car work sessions in parallel
       const validDistributions = carDistributions.filter(d => d.car_id > 0 && (d.hours > 0 || d.minutes > 0))
 
-      for (const dist of validDistributions) {
-        // Calculate total hours in decimal format
+      const sessionPromises = validDistributions.map(async (dist) => {
         const totalHours = dist.hours + (dist.minutes / 60)
+        const notes = `${dist.hours}h ${dist.minutes}m trabajadas`
 
-        // Create and immediately end the session
-        await api.startCarSession({
+        // Create session
+        const session = await api.startCarSession({
           punch_id: activePunch.id,
           car_id: dist.car_id,
           mechanic_name: selectedMechanic,
-          notes: `${dist.hours}h ${dist.minutes}m trabajadas`
+          notes
         })
 
-        // Get the session we just created and end it
-        const sessions = await api.getCarWorkSessions({
-          mechanic_name: selectedMechanic,
-          car_id: dist.car_id
-        })
-        const lastSession = sessions[0]
-        if (lastSession && !lastSession.end_time) {
-          await api.endCarSession(
-            lastSession.id,
-            `${dist.hours}h ${dist.minutes}m trabajadas`,
-            totalHours
-          )
-        }
-      }
+        // End session immediately
+        return api.endCarSession(session.id, notes, totalHours)
+      })
 
-      // Then punch out (after all car sessions are saved)
+      // Wait for all sessions to be created and ended
+      await Promise.all(sessionPromises)
+
+      // Then punch out
       await api.punchOut(activePunch.id)
 
       setActivePunch(null)
@@ -472,69 +470,44 @@ export default function PunchesTab() {
     const formattedHours = formatHours(totalHours)
 
     try {
-      // Create a punch record for payment history
-      // Create punch in and immediately punch out to create a "0 hours" entry that represents payment
-
       // Create punch in
       const punchResponse = await api.punchIn(mechanicName)
-      console.log('Pago: Created punch in:', punchResponse)
+      const punchId = punchResponse.id
 
-      // Wait a bit longer to ensure the punch is saved
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Create car work session and end it immediately in parallel
+      if (cars.length > 0) {
+        const sessionResponse = await api.startCarSession({
+          punch_id: punchId,
+          car_id: cars[0].id,
+          mechanic_name: mechanicName,
+          notes: `PAGO: ${formattedHours} pagadas`
+        })
 
-      // Get the active punch we just created
-      const activePunchResponse = await api.getActivePunch(mechanicName)
-      console.log('Pago: Active punch response:', activePunchResponse)
-
-      if (activePunchResponse.active) {
-        const punchId = activePunchResponse.punch.id
-
-        // Create a car work session with payment info in notes
-        if (cars.length > 0) {
-          await api.startCarSession({
-            punch_id: punchId,
-            car_id: cars[0].id, // Use first car as placeholder
-            mechanic_name: mechanicName,
-            notes: `PAGO: ${formattedHours} pagadas`
-          })
-
-          // Get and end the session immediately
-          const sessions = await api.getCarWorkSessions({
-            mechanic_name: mechanicName,
-            car_id: cars[0].id
-          })
-          const activeSession = sessions.find((s: any) => s.punch_id === punchId && !s.end_time)
-          if (activeSession) {
-            await api.endCarSession(activeSession.id)
-          }
-        }
-
-        // Punch out immediately (creates a very small time entry)
-        const punchOutResponse = await api.punchOut(punchId)
-        console.log('Pago: Punched out:', punchOutResponse)
-
-        // Wait to ensure punch out is saved before resetting
-        await new Promise(resolve => setTimeout(resolve, 300))
+        // End session and punch out in parallel
+        await Promise.all([
+          api.endCarSession(sessionResponse.id),
+          api.punchOut(punchId)
+        ])
+      } else {
+        await api.punchOut(punchId)
       }
 
-      // Now reset the hours
-      await api.resetMechanicHours(mechanicName)
+      // Reset hours and reload data in parallel
+      await Promise.all([
+        api.resetMechanicHours(mechanicName),
+        loadData(false)
+      ])
 
-      // Wait before reloading to ensure all DB operations are complete
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      // Reset pagination to show all punches including the new payment
+      // Reset pagination
       setPunchesOffset(0)
-
-      // Reload data to show the payment record in history - smooth reload without loading screen
-      await loadData(false)
 
       // Close modal
       setShowPaymentModal(false)
       setPaymentMechanic(null)
       setPaymentPassword('')
 
-      alert(`✅ Pago registrado para ${mechanicName}\nTotal pagado: ${formattedHours}\n\nPuedes ver el registro en el Historial.`)
+      // Simple success message (removed "Puedes ver el registro" as requested)
+      alert(`✅ Pago registrado: ${formattedHours}`)
     } catch (error: any) {
       console.error('Error al registrar el pago:', error)
       setPaymentError(error.message || 'Error al registrar el pago')
@@ -785,42 +758,19 @@ export default function PunchesTab() {
 
   const handleEditSummary = async (mechanic: MechanicSummary) => {
     try {
-      // Fetch individual sessions for this mechanic
-      const sessions = await api.getMechanicSessions(mechanic.mechanic_name)
-
-      // Group sessions by car and sum their hours
-      const carMap = new Map<number, { car_id: number; brand: string; model: string; year: number; hours: number; minutes: number; session_ids: number[] }>()
-
-      sessions.forEach((session: any) => {
-        const totalHours = session.total_hours || 0
+      // Use mechanic.cars data that's already loaded instead of fetching sessions
+      const carHoursArray = mechanic.cars.map(car => {
+        const totalHours = car.total_hours || 0
         const hours = Math.floor(totalHours)
         const minutes = Math.round((totalHours - hours) * 60)
 
-        if (carMap.has(session.car_id)) {
-          const existing = carMap.get(session.car_id)!
-          const totalMinutes = (existing.hours * 60 + existing.minutes) + (hours * 60 + minutes)
-          existing.hours = Math.floor(totalMinutes / 60)
-          existing.minutes = totalMinutes % 60
-          existing.session_ids.push(session.id)
-        } else {
-          carMap.set(session.car_id, {
-            car_id: session.car_id,
-            brand: session.brand,
-            model: session.model,
-            year: session.year,
-            hours,
-            minutes,
-            session_ids: [session.id]
-          })
+        return {
+          car_id: car.car_id,
+          hours,
+          minutes,
+          session_id: undefined // Will be set by backend when updating
         }
       })
-
-      const carHoursArray = Array.from(carMap.values()).map(car => ({
-        car_id: car.car_id,
-        hours: car.hours,
-        minutes: car.minutes,
-        session_id: car.session_ids[0] // We'll use the first session ID to update
-      }))
 
       setEditingSummary(mechanic)
       setEditingCarHours(carHoursArray)
@@ -828,7 +778,7 @@ export default function PunchesTab() {
       setEditSummaryError('')
       setShowEditSummaryModal(true)
     } catch (error: any) {
-      alert('Error al cargar las sesiones: ' + (error.message || 'Error desconocido'))
+      alert('Error al preparar edición: ' + (error.message || 'Error desconocido'))
     }
   }
 
