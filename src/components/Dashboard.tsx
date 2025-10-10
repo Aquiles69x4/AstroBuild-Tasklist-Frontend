@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Car, Trophy, Clock } from 'lucide-react'
 import IntegratedSection from './IntegratedSection'
 import Leaderboard from './Leaderboard'
@@ -9,6 +9,7 @@ import SimpleButton from './SimpleButton'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('workshop')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Keep-alive ping para mantener backend despierto (Render free tier)
   useEffect(() => {
@@ -30,6 +31,29 @@ export default function Dashboard() {
 
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-play music when entering Leaderboard tab
+  useEffect(() => {
+    const playMusic = async () => {
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/leaderboard-music.mp3')
+        audioRef.current.loop = true
+        audioRef.current.volume = 0.3
+      }
+
+      if (activeTab === 'leaderboard') {
+        try {
+          await audioRef.current.play()
+        } catch (error) {
+          console.log('Music autoplay blocked, waiting for user interaction:', error)
+        }
+      } else {
+        audioRef.current.pause()
+      }
+    }
+
+    playMusic()
+  }, [activeTab])
 
 
   const tabs = [
