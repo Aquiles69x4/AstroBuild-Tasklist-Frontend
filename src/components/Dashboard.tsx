@@ -38,7 +38,7 @@ export default function Dashboard() {
       if (!audioRef.current) {
         audioRef.current = new Audio('/leaderboard-music.mp3')
         audioRef.current.loop = true
-        audioRef.current.volume = 0.3
+        audioRef.current.volume = 0.2
       }
 
       if (activeTab === 'leaderboard') {
