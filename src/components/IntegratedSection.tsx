@@ -364,6 +364,15 @@ export default function IntegratedSection() {
     }
   }
 
+  const handleMoveTask = async (taskId: number, direction: 'up' | 'down') => {
+    try {
+      await api.moveTask(taskId, direction)
+      // Socket will handle update via 'task-updated' event
+    } catch (error) {
+      console.error('Error moving task:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -597,75 +606,82 @@ export default function IntegratedSection() {
                 <div className={`bg-gradient-to-r ${gradient} p-6 text-white relative`}>
                   <div className="absolute inset-0 bg-black/10"></div>
                   <div className="relative z-10">
-                    <div className="flex items-start justify-between gap-2 mb-4">
-                      <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
+                    <div className="flex flex-col gap-3">
+                      {/* Title and Icon Row */}
+                      <div className="flex items-center space-x-2 md:space-x-3">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 flex-shrink-0">
                           <Car className="w-5 h-5 md:w-6 md:h-6 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg md:text-2xl font-bold mb-1 truncate">
+                          <h3 className="text-lg md:text-2xl font-bold mb-1">
                             {car.brand} {car.model} {car.year}
                           </h3>
-                          <p className="text-white/80 text-xs md:text-sm mb-2 md:mb-3 truncate">
+                          <p className="text-white/80 text-xs md:text-sm">
                             {car.repair_time && `⏱️ ${car.repair_time}`}
                             {car.start_date && ` • 📅 ${new Date(car.start_date).toLocaleDateString()}`}
                           </p>
-                          <div className="flex items-center space-x-2 md:space-x-3 flex-wrap gap-1">
-                            <div className="bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 rounded-full">
-                              <span className="text-xs font-semibold whitespace-nowrap">
-                                {car.status === 'pending' ? '⏳ Pendiente' :
-                                 car.status === 'in_progress' ? '🔧 Progreso' :
-                                 car.status === 'completed' ? '✅ Listo' : '🎉 Entregado'}
-                              </span>
-                            </div>
-                            {totalTasks > 0 && (
-                              <div className="flex items-center space-x-1 text-xs md:text-sm animate-pulse">
-                                <Zap className="w-3 h-3 md:w-4 md:h-4 animate-bounce" />
-                                <span className="font-semibold whitespace-nowrap">{completedTasks}/{totalTasks}</span>
-                              </div>
-                            )}
-                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleMoveCar(car.id, 'up')}
-                          disabled={index === 0}
-                          className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
-                            index === 0
-                              ? 'opacity-30 cursor-not-allowed'
-                              : 'opacity-0 group-hover:opacity-100'
-                          }`}
-                          title="Mover arriba"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                        </button>
-                        <button
-                          onClick={() => handleMoveCar(car.id, 'down')}
-                          disabled={index === cars.length - 1}
-                          className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
-                            index === cars.length - 1
-                              ? 'opacity-30 cursor-not-allowed'
-                              : 'opacity-0 group-hover:opacity-100'
-                          }`}
-                          title="Mover abajo"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                        </button>
-                        <button
-                          onClick={() => setEditingCar(car)}
-                          className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
-                          title="Editar vehículo"
-                        >
-                          <Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCar(car.id)}
-                          className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-red-500/30 hover:scale-110 transition-all duration-200"
-                          title="Eliminar vehículo"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                        </button>
+
+                      {/* Status, Tasks Counter, and Action Buttons Row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-2 md:space-x-3 flex-wrap gap-1">
+                          <div className="bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 rounded-full">
+                            <span className="text-xs font-semibold whitespace-nowrap">
+                              {car.status === 'pending' ? '⏳ Pendiente' :
+                               car.status === 'in_progress' ? '🔧 Progreso' :
+                               car.status === 'completed' ? '✅ Listo' : '🎉 Entregado'}
+                            </span>
+                          </div>
+                          {totalTasks > 0 && (
+                            <div className="flex items-center space-x-1 text-xs md:text-sm animate-pulse">
+                              <Zap className="w-3 h-3 md:w-4 md:h-4 animate-bounce" />
+                              <span className="font-semibold whitespace-nowrap">{completedTasks}/{totalTasks}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
+                          <button
+                            onClick={() => setEditingCar(car)}
+                            className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
+                            title="Editar vehículo"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCar(car.id)}
+                            className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-red-500/30 hover:scale-110 transition-all duration-200"
+                            title="Eliminar vehículo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveCar(car.id, 'up')}
+                            disabled={index === 0}
+                            className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
+                              index === 0
+                                ? 'opacity-30 cursor-not-allowed'
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                            title="Mover arriba"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveCar(car.id, 'down')}
+                            disabled={index === cars.length - 1}
+                            className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
+                              index === cars.length - 1
+                                ? 'opacity-30 cursor-not-allowed'
+                                : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                            title="Mover abajo"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -840,13 +856,39 @@ export default function IntegratedSection() {
                                 )}
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
-                              title="Eliminar tarea"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => handleMoveTask(task.id, 'up')}
+                                disabled={taskIndex === 0}
+                                className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all duration-200 ${
+                                  taskIndex === 0
+                                    ? 'opacity-30 cursor-not-allowed text-gray-300'
+                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                }`}
+                                title="Mover arriba"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleMoveTask(task.id, 'down')}
+                                disabled={taskIndex === carTasks.length - 1}
+                                className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all duration-200 ${
+                                  taskIndex === carTasks.length - 1
+                                    ? 'opacity-30 cursor-not-allowed text-gray-300'
+                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                }`}
+                                title="Mover abajo"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
+                                title="Eliminar tarea"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Task Description Display */}
