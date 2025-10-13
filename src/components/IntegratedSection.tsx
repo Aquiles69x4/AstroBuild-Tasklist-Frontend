@@ -126,10 +126,28 @@ export default function IntegratedSection() {
         api.getPriorityTasks()
       ])
 
-      setCars(carsData)
+      // Load saved car order from localStorage
+      const savedCarOrder = localStorage.getItem('carOrder')
+      let orderedCars = carsData
+      if (savedCarOrder) {
+        try {
+          const carOrderIds = JSON.parse(savedCarOrder)
+          // Reorder cars based on saved order
+          orderedCars = carOrderIds
+            .map((id: number) => carsData.find((car: Car) => car.id === id))
+            .filter(Boolean) // Remove any undefined entries
+          // Add any new cars that weren't in the saved order
+          const savedIds = new Set(carOrderIds)
+          const newCars = carsData.filter((car: Car) => !savedIds.has(car.id))
+          orderedCars = [...orderedCars, ...newCars]
+        } catch (e) {
+          console.warn('Error parsing saved car order:', e)
+        }
+      }
+      setCars(orderedCars)
 
       // Order priority tasks by car order
-      const carOrderMap = new Map<number, number>(carsData.map((car: Car, index: number) => [car.id, index]))
+      const carOrderMap = new Map<number, number>(orderedCars.map((car: Car, index: number) => [car.id, index]))
       const orderedPriorityTasks = priorityTasksData.sort((a: Task, b: Task) => {
         const orderA = carOrderMap.get(a.car_id) ?? 999
         const orderB = carOrderMap.get(b.car_id) ?? 999
@@ -145,6 +163,30 @@ export default function IntegratedSection() {
         }
         tasksByCarId[task.car_id].push(task)
       })
+
+      // Load saved task orders from localStorage
+      const savedTaskOrders = localStorage.getItem('taskOrders')
+      if (savedTaskOrders) {
+        try {
+          const taskOrdersByCarId = JSON.parse(savedTaskOrders)
+          // Reorder tasks for each car based on saved order
+          Object.keys(taskOrdersByCarId).forEach(carIdStr => {
+            const carId = parseInt(carIdStr)
+            const taskOrderIds = taskOrdersByCarId[carIdStr]
+            const carTasks = tasksByCarId[carId] || []
+
+            const orderedTasks = taskOrderIds
+              .map((id: number) => carTasks.find((task: Task) => task.id === id))
+              .filter(Boolean)
+            // Add any new tasks that weren't in the saved order
+            const savedTaskIds = new Set(taskOrderIds)
+            const newTasks = carTasks.filter((task: Task) => !savedTaskIds.has(task.id))
+            tasksByCarId[carId] = [...orderedTasks, ...newTasks]
+          })
+        } catch (e) {
+          console.warn('Error parsing saved task orders:', e)
+        }
+      }
 
       setTasks(tasksByCarId)
     } catch (error) {
@@ -371,11 +413,15 @@ export default function IntegratedSection() {
     // Update local state immediately for instant feedback
     setCars(newCars)
 
+    // Save car order to localStorage
+    const carOrderIds = newCars.map(car => car.id)
+    localStorage.setItem('carOrder', JSON.stringify(carOrderIds))
+
     // Try to persist to backend (if endpoint exists)
     try {
       await api.moveCar(carId, direction)
     } catch (error) {
-      console.warn('Backend move endpoint not available, using local state only:', error)
+      console.warn('Backend move endpoint not available, using localStorage only:', error)
     }
   }
 
@@ -394,10 +440,19 @@ export default function IntegratedSection() {
     }
 
     // Update local state immediately for instant feedback
-    setTasks(prev => ({
-      ...prev,
+    const updatedTasks = {
+      ...tasks,
       [carId]: newTasks
-    }))
+    }
+    setTasks(updatedTasks)
+
+    // Save all task orders to localStorage
+    const taskOrders: { [carId: number]: number[] } = {}
+    Object.keys(updatedTasks).forEach(key => {
+      const cId = parseInt(key)
+      taskOrders[cId] = updatedTasks[cId].map(task => task.id)
+    })
+    localStorage.setItem('taskOrders', JSON.stringify(taskOrders))
   }
 
   if (loading) {
