@@ -379,6 +379,27 @@ export default function IntegratedSection() {
     }
   }
 
+  const handleMoveTask = (carId: number, taskId: number, direction: 'up' | 'down') => {
+    const carTasks = tasks[carId] || []
+    const currentIndex = carTasks.findIndex(t => t.id === taskId)
+    if (currentIndex === -1) return
+
+    const newTasks = [...carTasks]
+    if (direction === 'up' && currentIndex > 0) {
+      // Swap with previous task
+      [newTasks[currentIndex - 1], newTasks[currentIndex]] = [newTasks[currentIndex], newTasks[currentIndex - 1]]
+    } else if (direction === 'down' && currentIndex < newTasks.length - 1) {
+      // Swap with next task
+      [newTasks[currentIndex], newTasks[currentIndex + 1]] = [newTasks[currentIndex + 1], newTasks[currentIndex]]
+    }
+
+    // Update local state immediately for instant feedback
+    setTasks(prev => ({
+      ...prev,
+      [carId]: newTasks
+    }))
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -864,13 +885,39 @@ export default function IntegratedSection() {
                                 )}
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
-                              title="Eliminar tarea"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => handleMoveTask(car.id, task.id, 'up')}
+                                disabled={taskIndex === 0}
+                                className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all duration-200 ${
+                                  taskIndex === 0
+                                    ? 'opacity-30 cursor-not-allowed text-gray-300'
+                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                }`}
+                                title="Mover arriba"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleMoveTask(car.id, task.id, 'down')}
+                                disabled={taskIndex === carTasks.length - 1}
+                                className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all duration-200 ${
+                                  taskIndex === carTasks.length - 1
+                                    ? 'opacity-30 cursor-not-allowed text-gray-300'
+                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                                }`}
+                                title="Mover abajo"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
+                                title="Eliminar tarea"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Task Description Display */}
