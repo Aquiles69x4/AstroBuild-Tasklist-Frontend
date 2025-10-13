@@ -130,13 +130,6 @@ class ApiClient {
     })
   }
 
-  async moveTask(id: number, direction: 'up' | 'down') {
-    return this.request(`/tasks/${id}/move`, {
-      method: 'PUT',
-      body: JSON.stringify({ direction }),
-    })
-  }
-
   // Stats API
   async getStats() {
     return this.request('/stats')

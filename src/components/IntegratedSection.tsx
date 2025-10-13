@@ -356,20 +356,26 @@ export default function IntegratedSection() {
   }
 
   const handleMoveCar = async (carId: number, direction: 'up' | 'down') => {
+    const currentIndex = cars.findIndex(c => c.id === carId)
+    if (currentIndex === -1) return
+
+    const newCars = [...cars]
+    if (direction === 'up' && currentIndex > 0) {
+      // Swap with previous car
+      [newCars[currentIndex - 1], newCars[currentIndex]] = [newCars[currentIndex], newCars[currentIndex - 1]]
+    } else if (direction === 'down' && currentIndex < newCars.length - 1) {
+      // Swap with next car
+      [newCars[currentIndex], newCars[currentIndex + 1]] = [newCars[currentIndex + 1], newCars[currentIndex]]
+    }
+
+    // Update local state immediately for instant feedback
+    setCars(newCars)
+
+    // Try to persist to backend (if endpoint exists)
     try {
       await api.moveCar(carId, direction)
-      // Socket will handle update via 'car-moved' event
     } catch (error) {
-      console.error('Error moving car:', error)
-    }
-  }
-
-  const handleMoveTask = async (taskId: number, direction: 'up' | 'down') => {
-    try {
-      await api.moveTask(taskId, direction)
-      // Socket will handle update via 'task-updated' event
-    } catch (error) {
-      console.error('Error moving task:', error)
+      console.warn('Backend move endpoint not available, using local state only:', error)
     }
   }
 
@@ -606,9 +612,9 @@ export default function IntegratedSection() {
                 <div className={`bg-gradient-to-r ${gradient} p-6 text-white relative`}>
                   <div className="absolute inset-0 bg-black/10"></div>
                   <div className="relative z-10">
-                    <div className="flex flex-col gap-3">
-                      {/* Title and Icon Row */}
-                      <div className="flex items-center space-x-2 md:space-x-3">
+                    <div className="flex items-start justify-between gap-2 mb-4">
+                      {/* Left side: Icon and Car Info */}
+                      <div className="flex items-center space-x-2 md:space-x-3 flex-1 min-w-0">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 flex-shrink-0">
                           <Car className="w-5 h-5 md:w-6 md:h-6 text-white" />
                         </div>
@@ -616,33 +622,59 @@ export default function IntegratedSection() {
                           <h3 className="text-lg md:text-2xl font-bold mb-1">
                             {car.brand} {car.model} {car.year}
                           </h3>
-                          <p className="text-white/80 text-xs md:text-sm">
+                          <p className="text-white/80 text-xs md:text-sm mb-2">
                             {car.repair_time && `⏱️ ${car.repair_time}`}
                             {car.start_date && ` • 📅 ${new Date(car.start_date).toLocaleDateString()}`}
                           </p>
+                          <div className="flex items-center space-x-2 md:space-x-3 flex-wrap gap-1">
+                            <div className="bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 rounded-full">
+                              <span className="text-xs font-semibold whitespace-nowrap">
+                                {car.status === 'pending' ? '⏳ Pendiente' :
+                                 car.status === 'in_progress' ? '🔧 Progreso' :
+                                 car.status === 'completed' ? '✅ Listo' : '🎉 Entregado'}
+                              </span>
+                            </div>
+                            {totalTasks > 0 && (
+                              <div className="flex items-center space-x-1 text-xs md:text-sm animate-pulse">
+                                <Zap className="w-3 h-3 md:w-4 md:h-4 animate-bounce" />
+                                <span className="font-semibold whitespace-nowrap">{completedTasks}/{totalTasks}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Status, Tasks Counter, and Action Buttons Row */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center space-x-2 md:space-x-3 flex-wrap gap-1">
-                          <div className="bg-white/20 backdrop-blur-sm px-2 md:px-3 py-1 rounded-full">
-                            <span className="text-xs font-semibold whitespace-nowrap">
-                              {car.status === 'pending' ? '⏳ Pendiente' :
-                               car.status === 'in_progress' ? '🔧 Progreso' :
-                               car.status === 'completed' ? '✅ Listo' : '🎉 Entregado'}
-                            </span>
-                          </div>
-                          {totalTasks > 0 && (
-                            <div className="flex items-center space-x-1 text-xs md:text-sm animate-pulse">
-                              <Zap className="w-3 h-3 md:w-4 md:h-4 animate-bounce" />
-                              <span className="font-semibold whitespace-nowrap">{completedTasks}/{totalTasks}</span>
-                            </div>
-                          )}
+                      {/* Right side: Action Buttons - Top Right */}
+                      <div className="flex flex-col gap-1 flex-shrink-0">
+                        {/* Arrow buttons row */}
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => handleMoveCar(car.id, 'up')}
+                            disabled={index === 0}
+                            className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
+                              index === 0
+                                ? 'opacity-30 cursor-not-allowed'
+                                : ''
+                            }`}
+                            title="Mover arriba"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveCar(car.id, 'down')}
+                            disabled={index === cars.length - 1}
+                            className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
+                              index === cars.length - 1
+                                ? 'opacity-30 cursor-not-allowed'
+                                : ''
+                            }`}
+                            title="Mover abajo"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                          </button>
                         </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
+                        {/* Edit and Delete buttons row */}
+                        <div className="flex items-center space-x-1">
                           <button
                             onClick={() => setEditingCar(car)}
                             className="p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200"
@@ -656,30 +688,6 @@ export default function IntegratedSection() {
                             title="Eliminar vehículo"
                           >
                             <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                          </button>
-                          <button
-                            onClick={() => handleMoveCar(car.id, 'up')}
-                            disabled={index === 0}
-                            className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
-                              index === 0
-                                ? 'opacity-30 cursor-not-allowed'
-                                : 'opacity-0 group-hover:opacity-100'
-                            }`}
-                            title="Mover arriba"
-                          >
-                            <ChevronUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                          </button>
-                          <button
-                            onClick={() => handleMoveCar(car.id, 'down')}
-                            disabled={index === cars.length - 1}
-                            className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
-                              index === cars.length - 1
-                                ? 'opacity-30 cursor-not-allowed'
-                                : 'opacity-0 group-hover:opacity-100'
-                            }`}
-                            title="Mover abajo"
-                          >
-                            <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
                           </button>
                         </div>
                       </div>
@@ -856,39 +864,13 @@ export default function IntegratedSection() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center space-x-1">
-                              <button
-                                onClick={() => handleMoveTask(task.id, 'up')}
-                                disabled={taskIndex === 0}
-                                className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all duration-200 ${
-                                  taskIndex === 0
-                                    ? 'opacity-30 cursor-not-allowed text-gray-300'
-                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
-                                }`}
-                                title="Mover arriba"
-                              >
-                                <ChevronUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleMoveTask(task.id, 'down')}
-                                disabled={taskIndex === carTasks.length - 1}
-                                className={`opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all duration-200 ${
-                                  taskIndex === carTasks.length - 1
-                                    ? 'opacity-30 cursor-not-allowed text-gray-300'
-                                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
-                                }`}
-                                title="Mover abajo"
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
-                                title="Eliminar tarea"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
+                              title="Eliminar tarea"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
 
                           {/* Task Description Display */}
