@@ -631,7 +631,11 @@ export default function IntegratedSection() {
                         <button
                           onClick={() => handleMoveCar(car.id, 'up')}
                           disabled={index === 0}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
+                            index === 0
+                              ? 'opacity-30 cursor-not-allowed'
+                              : 'opacity-0 group-hover:opacity-100'
+                          }`}
                           title="Mover arriba"
                         >
                           <ChevronUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
@@ -639,7 +643,11 @@ export default function IntegratedSection() {
                         <button
                           onClick={() => handleMoveCar(car.id, 'down')}
                           disabled={index === cars.length - 1}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className={`p-1.5 md:p-2 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 hover:scale-110 transition-all duration-200 ${
+                            index === cars.length - 1
+                              ? 'opacity-30 cursor-not-allowed'
+                              : 'opacity-0 group-hover:opacity-100'
+                          }`}
                           title="Mover abajo"
                         >
                           <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
