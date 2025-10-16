@@ -403,7 +403,8 @@ export default function PunchesTab() {
     }
 
     try {
-      await api.pausePunch(activePunch.id, 'lunch')
+      const updatedPunch = await api.pausePunch(activePunch.id, 'lunch')
+      setActivePunch(updatedPunch)
       await loadData(false)
     } catch (error: any) {
       console.error('Error al pausar punch:', error)
@@ -421,7 +422,8 @@ export default function PunchesTab() {
     }
 
     try {
-      await api.resumePunch(activePunch.id)
+      const updatedPunch = await api.resumePunch(activePunch.id)
+      setActivePunch(updatedPunch)
       await loadData(false)
     } catch (error: any) {
       console.error('Error al reanudar punch:', error)
