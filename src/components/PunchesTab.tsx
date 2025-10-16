@@ -13,6 +13,8 @@ interface Punch {
   total_hours?: number
   date: string
   status: 'active' | 'completed'
+  total_paused_seconds?: number
+  current_pause_start?: string
   created_at: string
   updated_at: string
 }
@@ -143,6 +145,8 @@ export default function PunchesTab() {
     socketClient.on('punch-added', handleUpdate)
     socketClient.on('punch-updated', handleUpdate)
     socketClient.on('punch-deleted', handleUpdate)
+    socketClient.on('punch-paused', handleUpdate)
+    socketClient.on('punch-resumed', handleUpdate)
     socketClient.on('car-session-started', handleUpdate)
     socketClient.on('car-session-ended', handleUpdate)
 
@@ -153,6 +157,8 @@ export default function PunchesTab() {
       socketClient.off('punch-added', handleUpdate)
       socketClient.off('punch-updated', handleUpdate)
       socketClient.off('punch-deleted', handleUpdate)
+      socketClient.off('punch-paused', handleUpdate)
+      socketClient.off('punch-resumed', handleUpdate)
       socketClient.off('car-session-started', handleUpdate)
       socketClient.off('car-session-ended', handleUpdate)
       clearInterval(timer)
@@ -384,6 +390,42 @@ export default function PunchesTab() {
     } catch (error: any) {
       console.error('Error al ponchar salida:', error)
       alert(error.message || 'Error al ponchar salida')
+    }
+  }
+
+  const handlePausePunch = async () => {
+    if (!activePunch) return
+
+    // Check if already paused
+    if (activePunch.current_pause_start) {
+      alert('El punch ya está pausado')
+      return
+    }
+
+    try {
+      await api.pausePunch(activePunch.id, 'lunch')
+      await loadData(false)
+    } catch (error: any) {
+      console.error('Error al pausar punch:', error)
+      alert(error.message || 'Error al pausar el punch')
+    }
+  }
+
+  const handleResumePunch = async () => {
+    if (!activePunch) return
+
+    // Check if actually paused
+    if (!activePunch.current_pause_start) {
+      alert('El punch no está pausado')
+      return
+    }
+
+    try {
+      await api.resumePunch(activePunch.id)
+      await loadData(false)
+    } catch (error: any) {
+      console.error('Error al reanudar punch:', error)
+      alert(error.message || 'Error al reanudar el punch')
     }
   }
 
@@ -645,7 +687,12 @@ export default function PunchesTab() {
     return `${h}h ${m}m`
   }
 
-  const getElapsedTime = (startTime: string) => {
+  const getElapsedTime = (punch: Punch | string) => {
+    // Support both old signature (string) and new signature (Punch object)
+    const startTime = typeof punch === 'string' ? punch : punch.punch_in
+    const totalPausedSeconds = typeof punch === 'string' ? 0 : (punch.total_paused_seconds || 0)
+    const currentPauseStart = typeof punch === 'string' ? null : punch.current_pause_start
+
     const startMs = new Date(startTime).getTime()
 
     // Use saved offset or estimate it
@@ -662,7 +709,19 @@ export default function PunchesTab() {
     }
 
     const nowMs = Date.now() + offset
-    const elapsedSeconds = Math.floor((nowMs - startMs) / 1000)
+    let elapsedMs = nowMs - startMs
+
+    // Subtract total paused seconds (already completed pauses)
+    elapsedMs -= totalPausedSeconds * 1000
+
+    // If currently paused, subtract ongoing pause duration
+    if (currentPauseStart) {
+      const pauseStartMs = new Date(currentPauseStart).getTime()
+      const currentPauseDurationMs = nowMs - pauseStartMs
+      elapsedMs -= currentPauseDurationMs
+    }
+
+    const elapsedSeconds = Math.floor(elapsedMs / 1000)
 
     if (elapsedSeconds <= 0) return '0s'
 
@@ -983,8 +1042,13 @@ export default function PunchesTab() {
               </div>
 
               {activePunch && (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5 shadow-md animate-fade-in-up">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className={`bg-gradient-to-br ${activePunch.current_pause_start ? 'from-yellow-50 to-amber-50 border-yellow-400' : 'from-green-50 to-emerald-50 border-green-300'} border-2 rounded-xl p-5 shadow-md animate-fade-in-up`}>
+                  {activePunch.current_pause_start && (
+                    <div className="mb-3 px-3 py-2 bg-yellow-100 border border-yellow-400 rounded-lg flex items-center gap-2">
+                      <span className="text-yellow-700 font-semibold text-sm">⏸️ EN PAUSA - LUNCH</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="transform transition-all duration-300 hover:scale-105">
                       <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
                         <Clock className="w-4 h-4" />
@@ -994,11 +1058,28 @@ export default function PunchesTab() {
                     </div>
                     <div className="transform transition-all duration-300 hover:scale-105">
                       <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
-                        <Clock className="w-4 h-4 animate-spin-slow" />
-                        Tiempo transcurrido:
+                        <Clock className={`w-4 h-4 ${activePunch.current_pause_start ? '' : 'animate-spin-slow'}`} />
+                        Tiempo trabajado:
                       </p>
-                      <p className="text-xl font-bold text-green-700 mt-1 animate-pulse-subtle">{getElapsedTime(activePunch.punch_in)}</p>
+                      <p className={`text-xl font-bold ${activePunch.current_pause_start ? 'text-yellow-700' : 'text-green-700 animate-pulse-subtle'} mt-1`}>{getElapsedTime(activePunch)}</p>
                     </div>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    {!activePunch.current_pause_start ? (
+                      <button
+                        onClick={handlePausePunch}
+                        className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2.5 rounded-lg font-semibold hover:from-yellow-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                      >
+                        <span>⏸️</span> Pausar (Lunch)
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleResumePunch}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2.5 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg animate-pulse"
+                      >
+                        <span>▶️</span> Reanudar
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git cherry-pick:*)"
+      "Bash(git cherry-pick:*)",
+      "Bash(npm run migrate:*)",
+      "Bash(npm run:*)",
+      "Bash(node scripts/run-migrations.js:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

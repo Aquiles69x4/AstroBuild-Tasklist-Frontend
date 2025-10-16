@@ -185,6 +185,23 @@ class ApiClient {
     })
   }
 
+  async pausePunch(punchId: number, reason?: string) {
+    return this.request(`/punches/${punchId}/pause`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || 'lunch' }),
+    })
+  }
+
+  async resumePunch(punchId: number) {
+    return this.request(`/punches/${punchId}/resume`, {
+      method: 'POST',
+    })
+  }
+
+  async getPunchPauses(punchId: number) {
+    return this.request(`/punches/${punchId}/pauses`)
+  }
+
   async getCarWorkSessions(filters?: { date?: string; mechanic_name?: string; car_id?: number }) {
     const params = new URLSearchParams()
     if (filters?.date) params.append('date', filters.date)
