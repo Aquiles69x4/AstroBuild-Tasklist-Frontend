@@ -7,7 +7,9 @@
       "Bash(node scripts/run-migrations.js:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Read(//c/Users/erick/**)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
