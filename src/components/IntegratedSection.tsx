@@ -126,28 +126,11 @@ export default function IntegratedSection() {
         api.getPriorityTasks()
       ])
 
-      // Load saved car order from localStorage
-      const savedCarOrder = localStorage.getItem('carOrder')
-      let orderedCars = carsData
-      if (savedCarOrder) {
-        try {
-          const carOrderIds = JSON.parse(savedCarOrder)
-          // Reorder cars based on saved order
-          orderedCars = carOrderIds
-            .map((id: number) => carsData.find((car: Car) => car.id === id))
-            .filter(Boolean) // Remove any undefined entries
-          // Add any new cars that weren't in the saved order
-          const savedIds = new Set(carOrderIds)
-          const newCars = carsData.filter((car: Car) => !savedIds.has(car.id))
-          orderedCars = [...orderedCars, ...newCars]
-        } catch (e) {
-          console.warn('Error parsing saved car order:', e)
-        }
-      }
-      setCars(orderedCars)
+      // Cars are already ordered by display_order from the backend
+      setCars(carsData)
 
       // Order priority tasks by car order
-      const carOrderMap = new Map<number, number>(orderedCars.map((car: Car, index: number) => [car.id, index]))
+      const carOrderMap = new Map<number, number>(carsData.map((car: Car, index: number) => [car.id, index]))
       const orderedPriorityTasks = priorityTasksData.sort((a: Task, b: Task) => {
         const orderA = carOrderMap.get(a.car_id) ?? 999
         const orderB = carOrderMap.get(b.car_id) ?? 999
@@ -398,30 +381,12 @@ export default function IntegratedSection() {
   }
 
   const handleMoveCar = async (carId: number, direction: 'up' | 'down') => {
-    const currentIndex = cars.findIndex(c => c.id === carId)
-    if (currentIndex === -1) return
-
-    const newCars = [...cars]
-    if (direction === 'up' && currentIndex > 0) {
-      // Swap with previous car
-      [newCars[currentIndex - 1], newCars[currentIndex]] = [newCars[currentIndex], newCars[currentIndex - 1]]
-    } else if (direction === 'down' && currentIndex < newCars.length - 1) {
-      // Swap with next car
-      [newCars[currentIndex], newCars[currentIndex + 1]] = [newCars[currentIndex + 1], newCars[currentIndex]]
-    }
-
-    // Update local state immediately for instant feedback
-    setCars(newCars)
-
-    // Save car order to localStorage
-    const carOrderIds = newCars.map(car => car.id)
-    localStorage.setItem('carOrder', JSON.stringify(carOrderIds))
-
-    // Try to persist to backend (if endpoint exists)
     try {
+      // Call backend to update display_order in database
       await api.moveCar(carId, direction)
+      // Socket will handle the UI update via 'car-moved' event
     } catch (error) {
-      console.warn('Backend move endpoint not available, using localStorage only:', error)
+      console.error('Error moving car:', error)
     }
   }
 
